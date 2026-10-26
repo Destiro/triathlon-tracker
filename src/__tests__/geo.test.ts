@@ -1,4 +1,4 @@
-import { acceptFix, elevationGain, haversine, pathDistance, projectRoute, routePaths, simplify, splits } from '../lib/geo';
+import { acceptFix, elevationGain, haversine, pathDistance, projectRoute, recentSpeed, routePaths, simplify, splits } from '../lib/geo';
 import { GeoPoint } from '../types';
 
 /** Exactly 1 km of latitude, as the distance formula measures it. */
@@ -104,5 +104,25 @@ describe('projectRoute', () => {
     }
     expect(pts[0].y).toBeGreaterThan(pts[pts.length - 1].y); // heading north goes up the screen
     expect(projectRoute([], 10, 10)).toEqual([]);
+  });
+});
+
+describe('recentSpeed', () => {
+  it('measures the last stretch only', () => {
+    // 1 km at 5:00/km, then 500 m at 4:00/km.
+    const slow = straight(1, 50, 300);
+    const fast = straight(0.5, 50, 240).slice(1).map((p) => ({ ...p, lat: p.lat + KM_LAT, t: p.t + 300_000 }));
+    const speed = recentSpeed([...slow, ...fast], 30_000)!;
+    expect(1000 / speed).toBeCloseTo(240, 0);
+  });
+
+  it('waits for enough data, and does not reach back across a pause', () => {
+    expect(recentSpeed([{ lat: 0, lon: 0, t: 0 }])).toBeNull();
+    expect(recentSpeed([{ lat: 0, lon: 0, t: 0 }, { lat: 0, lon: 0.0001, t: 2000 }])).toBeNull();
+    // Slow before the pause (10:00/km), 5:00/km after it: only the stretch after the pause counts.
+    const before = straight(0.5, 50, 600);
+    const after = straight(0.5, 50, 300).map((p, i) => ({ ...p, lon: p.lon + 0.01, t: p.t + 400_000, brk: i === 0 ? true : undefined }));
+    expect(1000 / recentSpeed([...before, ...after.slice(0, 3)])!).toBeCloseTo(300, 0);
+    expect(recentSpeed([...before, ...after.slice(0, 1)])).toBeNull();
   });
 });

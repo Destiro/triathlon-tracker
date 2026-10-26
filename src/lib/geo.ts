@@ -173,3 +173,18 @@ export function projectRoute(points: Pick<GeoPoint, 'lat' | 'lon'>[], width: num
   const offY = (height - spanY * scale) / 2;
   return points.map((_, i) => ({ x: offX + (xs[i] - minX) * scale, y: height - (offY + (ys[i] - minY) * scale) }));
 }
+
+/**
+ * Speed in metres per second over roughly the last `windowMs` of moving time, for a "current pace" readout
+ * that reacts to how you're going now rather than the whole workout. Null until there is enough to measure.
+ */
+export function recentSpeed(points: GeoPoint[], windowMs = 30_000): number | null {
+  if (points.length < 2) return null;
+  const end = points[points.length - 1];
+  let i = points.length - 1;
+  while (i > 0 && end.t - points[i - 1].t <= windowMs && !points[i].brk) i--;
+  const window = points.slice(i);
+  const ms = end.t - window[0].t;
+  if (window.length < 2 || ms < 5_000) return null;
+  return pathDistance(window) / (ms / 1000);
+}

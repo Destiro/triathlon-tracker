@@ -176,7 +176,20 @@ const pad = (n: number) => String(n).padStart(2, '0');
  * Adds a workout by hand, or edits any workout, tracked ones included. A brick or race is edited leg by
  * leg. Mount it to open; with no `workout` it starts a new one (optionally for a given sport).
  */
-export function WorkoutForm({ workout, sport: initialSport = 'run', onClose, onSaved }: { workout?: Workout; sport?: Sport; onClose: () => void; onSaved?: (w: Workout) => void }) {
+export function WorkoutForm({
+  workout,
+  sport: initialSport = 'run',
+  heading,
+  onClose,
+  onSaved,
+}: {
+  workout?: Workout;
+  sport?: Sport;
+  /** Replaces the usual "Add a workout" / "Edit workout" heading. */
+  heading?: string;
+  onClose: () => void;
+  onSaved?: (w: Workout) => void;
+}) {
   const { settings, gear, saveWorkout } = useStore();
   const units = settings.units;
   const start = workout ? new Date(workout.startedAt) : new Date();
@@ -249,7 +262,7 @@ export function WorkoutForm({ workout, sport: initialSport = 'run', onClose, onS
   };
 
   return (
-    <FormModal title={workout ? 'Edit workout' : 'Add a workout'} onClose={onClose}>
+    <FormModal title={heading ?? (workout ? 'Edit workout' : 'Add a workout')} onClose={onClose}>
       {single && !workout ? (
         <Segmented
           options={TRAINING_SPORTS.map((s) => ({ value: s, label: sportLabel(s) }))}
