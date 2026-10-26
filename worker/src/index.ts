@@ -74,10 +74,27 @@ function connect(url: URL, env: Env): Response {
   return Response.redirect(authorize.toString(), 302);
 }
 
+const escapeHtml = (text: string) =>
+  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/**
+ * Android browsers often ignore a plain 302 to an app link, so hand back a page that tries the redirect and also
+ * offers a button, which counts as a tap and is always allowed.
+ */
+function openApp(link: string): Response {
+  const href = escapeHtml(link);
+  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Return to Triathlon Tracker</title>
+<style>body{font-family:system-ui,sans-serif;text-align:center;padding:64px 24px}a{display:inline-block;margin-top:24px;padding:16px 32px;background:#fc4c02;color:#fff;border-radius:12px;font-size:18px;text-decoration:none}</style>
+</head><body><h1>Connected to Strava</h1><p>Tap the button to go back to the app.</p><a href="${href}">Return to the app</a>
+<script>setTimeout(function(){location.href=${JSON.stringify(link).replace(/</g, '\\u003c')}},300)</script></body></html>`;
+  return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8' } });
+}
+
 async function callback(url: URL, env: Env): Promise<Response> {
   const appRedirect = url.searchParams.get('state') ?? '';
   if (!ALLOWED_REDIRECTS.test(appRedirect)) return json({ error: 'Unknown app address.' }, 400);
-  const back = (params: Record<string, string>) => Response.redirect(withParams(appRedirect, params), 302);
+  const back = (params: Record<string, string>) => openApp(withParams(appRedirect, params));
 
   const code = url.searchParams.get('code');
   if (!code) return back({ error: url.searchParams.get('error') === 'access_denied' ? 'denied' : 'failed' });

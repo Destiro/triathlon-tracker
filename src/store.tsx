@@ -3,7 +3,16 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { Activity, byDate, mergeActivities } from './activities';
 import { addDays, fromKey, toKey } from './dates';
 import { buildSchedule, Schedule } from './plan/schedule';
-import { StravaError, StravaTokens, connect, fetchActivitiesSince, forgetTokens, loadTokens } from './strava';
+import {
+  StravaError,
+  StravaTokens,
+  connect,
+  fetchActivitiesSince,
+  forgetTokens,
+  loadTokens,
+  parseConnectParams,
+  saveTokens,
+} from './strava';
 
 export interface Settings {
   /** The Monday that plan week 1 starts on. */
@@ -48,6 +57,8 @@ interface Store {
   /** A message to show, such as why the last sync failed. Cleared by the next successful one. */
   syncError: string | null;
   connectStrava: () => Promise<void>;
+  /** Completes sign-in from the query parameters of the `strava-auth` app link. */
+  finishConnect: (params: Record<string, unknown>) => Promise<void>;
   disconnectStrava: () => Promise<void>;
   sync: () => Promise<void>;
 }
@@ -137,19 +148,39 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, [ready, tokens, runSync]);
 
-  const connectStrava = useCallback(async () => {
-    try {
-      const result = await connect();
-      if (!result) return;
+  const adoptTokens = useCallback(
+    async (result: StravaTokens) => {
       setTokens(result);
       setAthlete(result.athlete);
       setSyncError(null);
       syncedOnOpen.current = true;
       await runSync(result);
+    },
+    [runSync],
+  );
+
+  const connectStrava = useCallback(async () => {
+    try {
+      const result = await connect();
+      if (result) await adoptTokens(result);
     } catch (e) {
       setSyncError(e instanceof StravaError ? e.message : 'Could not connect to Strava.');
     }
-  }, [runSync]);
+  }, [adoptTokens]);
+
+  // On Android the sign-in often comes back as a plain app link rather than through the browser session.
+  const finishConnect = useCallback(
+    async (params: Record<string, unknown>) => {
+      try {
+        const result = parseConnectParams(params);
+        await saveTokens(result);
+        await adoptTokens(result);
+      } catch (e) {
+        setSyncError(e instanceof StravaError ? e.message : 'Could not connect to Strava.');
+      }
+    },
+    [adoptTokens],
+  );
 
   const disconnectStrava = useCallback(async () => {
     await forgetTokens();
@@ -173,6 +204,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     syncing,
     syncError,
     connectStrava,
+    finishConnect,
     disconnectStrava,
     sync,
   };

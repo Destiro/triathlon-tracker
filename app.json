@@ -13,7 +13,8 @@
       "package": "com.destiro.triathlontracker",
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundColor": "#0B3D91",
+        "backgroundColor": "#0B4A6B",
+        "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false
@@ -28,6 +29,16 @@
     "scheme": "triathlontracker",
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "86b822f1-f328-4372-9787-1f32ae74254b"
+      }
     }
   }
 }

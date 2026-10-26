@@ -26,7 +26,11 @@ export class StravaError extends Error {}
 
 /** Reads the tokens the Worker put on the app link at the end of sign-in. */
 export function parseConnectRedirect(url: string): StravaTokens {
-  const params = Linking.parse(url).queryParams ?? {};
+  return parseConnectParams(Linking.parse(url).queryParams ?? {});
+}
+
+/** The same, from query parameters that are already split out, as Expo Router hands them over. */
+export function parseConnectParams(params: Record<string, unknown>): StravaTokens {
   const get = (key: string) => (typeof params[key] === 'string' ? (params[key] as string) : '');
 
   const error = get('error');
@@ -51,7 +55,7 @@ export async function loadTokens(): Promise<StravaTokens | null> {
   }
 }
 
-const saveTokens = (tokens: StravaTokens) => SecureStore.setItemAsync(TOKEN_KEY, JSON.stringify(tokens));
+export const saveTokens = (tokens: StravaTokens) => SecureStore.setItemAsync(TOKEN_KEY, JSON.stringify(tokens));
 
 export const forgetTokens = () => SecureStore.deleteItemAsync(TOKEN_KEY);
 
