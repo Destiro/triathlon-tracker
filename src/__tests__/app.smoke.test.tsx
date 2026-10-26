@@ -77,6 +77,7 @@ test('every tab draws with data, and the main pages open', async () => {
   expect(await screen.findByText('Summer Olympic Tri')).toBeTruthy();
   await fireEvent.press(screen.getByText('Summer Olympic Tri'));
   expect(await screen.findByText('Predicted finish')).toBeTruthy();
+  expect(screen.getByText('Race-day targets for 2:35:00')).toBeTruthy();
   await fireEvent.press(screen.getByText('Build a training plan'));
   expect(await screen.findByText('Hours a week at your busiest')).toBeTruthy();
   await fireEvent.press(screen.getByText('Create plan'));
@@ -162,7 +163,8 @@ test('a triathlon moves through its legs', async () => {
   expect(await screen.findByText('Finish race')).toBeTruthy();
 });
 
-test('a workout can be added by hand', async () => {
+test('a workout can be added by hand, and its personal bests are celebrated', async () => {
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   await render(<App />);
   await fireEvent.press(tab('Log'));
   await fireEvent.press(await screen.findByText('Add a workout'));
@@ -171,6 +173,7 @@ test('a workout can be added by hand', async () => {
   await fireEvent.press(screen.getByText('Save workout'));
   expect(await screen.findByText('45:00')).toBeTruthy();
   expect(screen.getByText('9.50 km')).toBeTruthy();
+  expect(alert).toHaveBeenCalledWith('2 new personal bests!', expect.stringContaining('Fastest 5 km run'));
 });
 
 test('settings open and save', async () => {

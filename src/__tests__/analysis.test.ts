@@ -1,7 +1,7 @@
 import { DEFAULT_LIMITS, gearDistance, gearKindsFor, wear } from '../lib/gear';
 import { describeForm, intensityFactor, loadSeries, trainingStress } from '../lib/load';
-import { daysUntil, nextRace, predictFinish, raceLegs, riegel } from '../lib/races';
-import { currentStreak, personalBests, recent, totals, weeklyVolume } from '../lib/stats';
+import { daysUntil, goalSplits, nextRace, predictFinish, raceLegs, riegel } from '../lib/races';
+import { currentStreak, newBests, personalBests, recent, totals, weeklyVolume } from '../lib/stats';
 import { isMultisport, primarySport, sportTotals, workoutDistance, workoutDuration, workoutTitle } from '../lib/workout';
 import { estimateMaxHr, hrZones, zoneFor } from '../lib/zones';
 import { Gear, Race } from '../types';
@@ -168,5 +168,35 @@ describe('gear', () => {
     expect(wear({ ...shoes, limitM: undefined }, runs)).toMatchObject({ status: 'ok', fraction: null });
     expect(gearKindsFor('run')).toContain('shoes');
     expect(gearKindsFor('bike')).not.toContain('shoes');
+  });
+});
+
+describe('goal splits', () => {
+  const race: Race = { id: 'r', name: 'x', date: '2026-12-05', distance: 'olympic' };
+
+  it('shares the goal between legs in the predicted proportions, keeping transitions', () => {
+    const p = predictFinish(race, [], today);
+    const g = goalSplits(p, 2 * 3600 + 30 * 60)!;
+    expect(Math.abs(g.totalSec - 9000)).toBeLessThanOrEqual(2);
+    expect(g.t1Sec).toBe(p.t1Sec);
+    const ratio = (x: typeof p) => x.legs[1].durationSec / x.legs[2].durationSec;
+    expect(ratio(g)).toBeCloseTo(ratio(p), 2);
+  });
+
+  it('refuses a goal shorter than the transitions', () => {
+    expect(goalSplits(predictFinish(race, [], today), 200)).toBeNull();
+  });
+});
+
+describe('new personal bests', () => {
+  it('reports bests that a workout sets, but not ones it merely matches or misses', () => {
+    const old = [workout('2026-10-20', 'run', 30, 6)];
+    const faster = workout('2026-10-27', 'run', 27, 6);
+    const slower = workout('2026-10-27', 'run', 40, 6);
+    const labels = (list: ReturnType<typeof newBests>) => list.map((b) => b.label);
+    expect(labels(newBests(old, [...old, faster], faster.id))).toEqual(['Fastest 5 km run']);
+    expect(newBests(old, [...old, slower], slower.id)).toEqual([]);
+    const first = workout('2026-10-27', 'swim', 30, 1.5);
+    expect(labels(newBests([], [first], first.id))).toEqual(['Fastest 400 m swim', 'Fastest 1500 m swim', 'Longest swim']);
   });
 });

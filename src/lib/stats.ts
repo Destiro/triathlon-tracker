@@ -140,3 +140,17 @@ export const recent = (workouts: Workout[], today: Date, days: number): Workout[
     const age = daysBetween(new Date(w.startedAt), today);
     return age >= 0 && age < days;
   });
+
+/**
+ * Personal bests that a workout sets: ones it holds afterwards that it didn't before, either because there
+ * was no best yet or because it beats the old one.
+ */
+export function newBests(before: Workout[], after: Workout[], workoutId: string): Best[] {
+  const old = new Map(personalBests(before).map((b) => [b.label, b]));
+  return personalBests(after).filter((b) => {
+    if (b.workoutId !== workoutId) return false;
+    const previous = old.get(b.label);
+    if (!previous) return true;
+    return b.kind === 'distance' ? b.value > previous.value : b.value < previous.value;
+  });
+}

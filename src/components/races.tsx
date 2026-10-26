@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { addDays, formatDate, fromKey, isValidKey, toKey } from '../lib/dates';
-import { formatDuration, formatSportDistance, parseDistance, parseDuration, relativeDays, sportLabel } from '../lib/format';
-import { daysUntil, predictFinish, RACE_DISTANCES, raceLabel, raceLegs } from '../lib/races';
+import { formatDuration, formatSportDistance, formatSportPace, parseDistance, parseDuration, relativeDays, sportLabel } from '../lib/format';
+import { daysUntil, goalSplits, predictFinish, RACE_DISTANCES, raceLabel, raceLegs } from '../lib/races';
 import { newId } from '../lib/workout';
 import { useStore } from '../store';
 import { colors, radius, spacing, sportColors, type } from '../theme';
@@ -50,6 +50,7 @@ export function RaceDetail({ race, onClose, onPlan }: { race: Race; onClose: () 
   const p = predictFinish(race, workouts, today);
   const anyEstimate = p.legs.some((l) => l.estimated && l.distanceM > 0);
   const diff = race.goalSec ? p.totalSec - race.goalSec : null;
+  const targets = race.goalSec && days >= 0 ? goalSplits(p, race.goalSec) : null;
 
   const confirmDelete = () =>
     Alert.alert(`Delete ${race.name}?`, plan?.raceId === race.id ? 'Its training plan will be deleted too.' : 'This cannot be undone.', [
@@ -103,6 +104,27 @@ export function RaceDetail({ race, onClose, onPlan }: { race: Race; onClose: () 
         Based on your best efforts in the last 60 days, scaled to race distance (sessions shorter than a quarter of a leg don&apos;t count).
         {anyEstimate ? ' Legs marked "typical pace" have no recent training yet, so an average age-group pace is used.' : ''} Transitions use typical times.
       </Text>
+
+      {targets ? (
+        <>
+          <SectionTitle>Race-day targets for {formatDuration(race.goalSec!)}</SectionTitle>
+          <Card>
+            {targets.legs
+              .filter((l) => l.distanceM > 0)
+              .map((l) => (
+                <View key={l.sport} style={styles.leg}>
+                  <SportBadge sport={l.sport} size={30} />
+                  <Text style={[type.body, { flex: 1 }]}>{sportLabel(l.sport)}</Text>
+                  <Text style={[type.small, { fontVariant: ['tabular-nums'] }]}>{formatSportPace(l.sport, l.durationSec, l.distanceM, units)}</Text>
+                  <Text style={[type.body, styles.legTime]}>{formatDuration(l.durationSec)}</Text>
+                </View>
+              ))}
+            <Text style={type.small}>
+              The pace or speed to hold on each leg to finish in your goal time, with transitions of {formatDuration(targets.t1Sec)} and {formatDuration(targets.t2Sec)}. Time is shared between the legs the way your training suggests.
+            </Text>
+          </Card>
+        </>
+      ) : null}
 
       {days >= 0 ? (
         <Button label={plan?.raceId === race.id ? 'View training plan' : 'Build a training plan'} icon="calendar-check" onPress={onPlan} big />

@@ -101,3 +101,16 @@ export function predictFinish(race: Pick<Race, 'distance' | 'custom'>, workouts:
   ];
   return { legs: predicted, t1Sec, t2Sec, totalSec: predicted.reduce((s, l) => s + l.durationSec, 0) + t1Sec + t2Sec };
 }
+
+/**
+ * What each leg needs to take to finish in `goalSec`, sharing the time between swim, bike and run in the same
+ * proportions as your predicted race (transitions stay as predicted). Null if the goal leaves no time for them.
+ */
+export function goalSplits(prediction: Prediction, goalSec: number): Prediction | null {
+  const transitions = prediction.t1Sec + prediction.t2Sec;
+  const legsSec = prediction.legs.reduce((s, l) => s + l.durationSec, 0);
+  if (goalSec <= transitions || legsSec <= 0) return null;
+  const scale = (goalSec - transitions) / legsSec;
+  const legs = prediction.legs.map((l) => ({ ...l, durationSec: Math.round(l.durationSec * scale) }));
+  return { ...prediction, legs, totalSec: legs.reduce((s, l) => s + l.durationSec, 0) + transitions };
+}

@@ -13,6 +13,7 @@ import {
 } from '../lib/format';
 import { gearKindsFor, GEAR_LABELS } from '../lib/gear';
 import { trainingStress } from '../lib/load';
+import { newBests } from '../lib/stats';
 import { primarySport, workoutDistance, workoutDuration, workoutTitle, newId } from '../lib/workout';
 import { hrZones, zoneFor } from '../lib/zones';
 import { useStore } from '../store';
@@ -190,7 +191,7 @@ export function WorkoutForm({
   onClose: () => void;
   onSaved?: (w: Workout) => void;
 }) {
-  const { settings, gear, saveWorkout } = useStore();
+  const { settings, gear, workouts, saveWorkout } = useStore();
   const units = settings.units;
   const start = workout ? new Date(workout.startedAt) : new Date();
   const [date, setDate] = useState(toKey(start));
@@ -256,9 +257,20 @@ export function WorkoutForm({
       notes: notes.trim() || undefined,
       gearId,
     };
+    // Celebrate any personal best it sets, compared with everything else you've logged.
+    const others = workouts.filter((w) => w.id !== next.id);
+    const bests = newBests(others, [...others, next], next.id);
     saveWorkout(next);
     onSaved?.(next);
     onClose();
+    if (bests.length > 0) {
+      Alert.alert(
+        bests.length === 1 ? 'New personal best!' : `${bests.length} new personal bests!`,
+        bests
+          .map((b) => `${b.label}: ${b.kind === 'distance' ? formatSportDistance(b.sport, b.value, units) : formatDuration(b.value)}`)
+          .join('\n'),
+      );
+    }
   };
 
   return (
