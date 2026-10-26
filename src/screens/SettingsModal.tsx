@@ -3,7 +3,7 @@ import { Alert, Share, StyleSheet, Text, View } from 'react-native';
 import { FormModal } from '../components/modals';
 import { Button, Card, Chip, Field, Segmented } from '../components/ui';
 import { DATA_VERSION, EMPTY_DATA, migrate } from '../lib/migrate';
-import { sampleData } from '../lib/sample';
+import { hasSamples, withoutSamples, withSamples } from '../lib/sample';
 import { estimateMaxHr, hrZones } from '../lib/zones';
 import { useStore } from '../store';
 import { colors, spacing, type } from '../theme';
@@ -46,11 +46,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
   const zones = max ? hrZones(max, numberOrUndefined(restingHr)) : [];
 
   const exportData = () => {
-    const { workouts, races, plan, gear } = store;
-    Share.share({
-      title: 'Triathlon Tracker backup',
-      message: JSON.stringify({ version: DATA_VERSION, workouts, races, plan, gear, settings }),
-    }).catch(() => {});
+    Share.share({ title: 'Triathlon Tracker backup', message: JSON.stringify(data) }).catch(() => {});
   };
 
   const restore = () => {
@@ -72,28 +68,13 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const { workouts, races, plan, gear } = store;
+  const data = { version: DATA_VERSION, workouts, races, plan, gear, settings };
   const addSamples = () => {
-    const sample = sampleData(new Date());
-    const has = (id: string) => store.workouts.some((w) => w.id === id) || store.races.some((r) => r.id === id);
-    replaceAll({
-      ...store,
-      version: DATA_VERSION,
-      workouts: [...store.workouts, ...sample.workouts.filter((w) => !has(w.id))],
-      races: [...store.races, ...sample.races.filter((r) => !has(r.id))],
-      gear: [...store.gear, ...sample.gear.filter((g) => !store.gear.some((x) => x.id === g.id))],
-    });
+    replaceAll(withSamples(data, new Date()));
     onClose();
   };
-
-  const removeSamples = () =>
-    replaceAll({
-      ...store,
-      version: DATA_VERSION,
-      workouts: store.workouts.filter((w) => !w.id.startsWith('sample-')),
-      races: store.races.filter((r) => !r.id.startsWith('sample-')),
-      gear: store.gear.filter((g) => !g.id.startsWith('sample-')),
-      plan: store.plan?.raceId.startsWith('sample-') ? null : store.plan,
-    });
+  const removeSamples = () => replaceAll(withoutSamples(data));
 
   const resetAll = () =>
     Alert.alert('Delete everything?', 'All workouts, races, plans, gear and settings will be removed. Export a backup first if you might want them.', [
@@ -108,7 +89,6 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
       },
     ]);
 
-  const hasSamples = store.workouts.some((w) => w.id.startsWith('sample-'));
 
   return (
     <FormModal title="Settings" onClose={onClose} action={<Button label="Save" onPress={save} />}>
@@ -178,7 +158,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
       <Card>
         <Text style={type.heading}>Try it with sample data</Text>
         <Text style={type.small}>Adds six weeks of example training, a race and some gear, so every chart has something to show. Your own data is kept.</Text>
-        {hasSamples ? (
+        {hasSamples(data) ? (
           <Button label="Remove sample data" variant="outline" onPress={removeSamples} />
         ) : (
           <Button label="Add sample data" variant="quiet" icon="flask-outline" onPress={addSamples} />

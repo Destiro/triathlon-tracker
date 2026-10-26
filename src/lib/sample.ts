@@ -50,3 +50,25 @@ export function sampleData(today: Date): { workouts: Workout[]; races: Race[]; g
   ];
   return { workouts, races, gear };
 }
+
+const isSample = (id: string) => id.startsWith('sample-');
+
+/** Your data with the sample data added alongside it. Adding twice doesn't duplicate anything. */
+export function withSamples<T extends { workouts: Workout[]; races: Race[]; gear: Gear[] }>(data: T, today: Date): T {
+  const sample = sampleData(today);
+  const missing = <X extends { id: string }>(mine: X[], extra: X[]) => [...mine, ...extra.filter((x) => !mine.some((m) => m.id === x.id))];
+  return { ...data, workouts: missing(data.workouts, sample.workouts), races: missing(data.races, sample.races), gear: missing(data.gear, sample.gear) };
+}
+
+/** Your data with the sample data taken out again, including a plan built for the sample race. */
+export function withoutSamples<T extends { workouts: Workout[]; races: Race[]; gear: Gear[]; plan: { raceId: string } | null }>(data: T): T {
+  return {
+    ...data,
+    workouts: data.workouts.filter((w) => !isSample(w.id)),
+    races: data.races.filter((r) => !isSample(r.id)),
+    gear: data.gear.filter((g) => !isSample(g.id)),
+    plan: data.plan && isSample(data.plan.raceId) ? null : data.plan,
+  };
+}
+
+export const hasSamples = (data: { workouts: Workout[] }): boolean => data.workouts.some((w) => isSample(w.id));
