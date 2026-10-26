@@ -51,6 +51,8 @@ describe('distances and paces', () => {
   it('formats distances in either unit system', () => {
     expect(formatDistance(10_250, 'metric')).toBe('10.25 km');
     expect(formatDistance(800, 'metric')).toBe('800 m');
+    expect(formatDistance(999.7, 'metric')).toBe('1.00 km');
+    expect(formatDistance(999.4, 'metric')).toBe('999 m');
     expect(formatDistance(1609.344, 'imperial')).toBe('1.00 mi');
     expect(formatSportDistance('swim', 1500, 'metric')).toBe('1500 m');
     expect(formatSportDistance('swim', 1500, 'imperial')).toBe('1640 yd');

@@ -47,7 +47,8 @@ const round = (n: number, places: number) => {
 /** "10.25 km" or "6.37 mi". Below 1 km (metric) it reads in metres. */
 export function formatDistance(metres: number, units: Units): string {
   if (units === 'imperial') return `${round(metres / METRES_PER_MILE, 2).toFixed(2)} mi`;
-  if (metres < 1000) return `${Math.round(metres)} m`;
+  // Decided on the rounded value, so 999.7 m reads "1.00 km" rather than "1000 m".
+  if (Math.round(metres) < 1000) return `${Math.round(metres)} m`;
   return `${round(metres / 1000, 2).toFixed(2)} km`;
 }
 
