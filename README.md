@@ -1,99 +1,80 @@
 # Triathlon Tracker
 
-A training app for triathletes, built with Expo (React Native + TypeScript) for Android. Record swims, rides
-and runs live, keep a training log, plan towards a race and see how your fitness is building.
+An Android app (Expo, React Native, TypeScript) that follows a 70.3 training plan and tracks it for you.
+There are no start or stop buttons: your watch records the workout, Strava receives it, and the app pulls it in
+and ticks the plan off by itself.
 
-## Features
+```
+Galaxy Watch → Samsung Health → Strava → this app
+```
 
-**Track (live recording)**
-- Run and ride with GPS: distance, average and current pace or speed, km splits, climbing and your route drawn
-  as you go. GPS warms up while you choose, with an accuracy readout.
-- Pool swims: a big tap-per-length button (with undo) that uses your pool length.
-- Strength sessions: a timer.
-- Brick (bike, transition, run) and full triathlon race mode (swim, T1, bike, T2, run), timing every leg and
-  transition with one "next" button.
-- Pause, resume, finish and discard. The screen stays on while recording, and a buzz marks each kilometre,
-  each length and each new leg.
-- Crash-safe: a session in progress is saved as it goes and comes back (paused) if the app closes.
-- Finished workouts are saved immediately, then a review form takes effort, heart rate, gear and notes.
+The plan is Triathlete's [20-week plan for your first 70.3](https://www.triathlete.com/training/20-week-training-plan-first-70-3-triathlon/)
+(Matt Fitzgerald), entered week by week in `src/plan/data.ts`. Swim distances are written in yards on the page
+and kept here as the same number in metres.
 
-**Log**
-- Every workout grouped by week with weekly totals, filters per sport and for bricks/races.
-- Detail page with route map, splits, legs, training stress, heart-rate zone, gear and notes.
-- Add any session by hand, including bricks leg by leg, and edit or delete anything.
-- A message when a workout sets a personal best.
+## What it does
 
-**Plan**
-- Races (Sprint, Olympic, 70.3, Ironman or custom) with countdowns.
-- A finish-time prediction leg by leg from your best recent efforts (Riegel's formula), compared with your
-  goal, and the pace or speed to hold on each leg to hit it.
-- A periodised training plan built for your race and available hours: base, build, peak and taper phases,
-  a lighter week every fourth week, six sessions a week with a rest day, bricks from the build phase and
-  optional strength. Each session explains the workout, can be started on the Track tab or logged, and is
-  ticked off automatically when you log a matching workout.
+- **Today**: days to the race, today's workouts with their warm-up, main set and cool-down, whether each is
+  done, a week strip, and this week's swim, bike and run against the plan.
+- **Plan**: all 20 weeks laid out on real dates, with how much of each week you have done. Tap any day.
+- **Stats**: weekly volume per sport (planned against done), fitness / fatigue / form from heart rate, aerobic
+  efficiency for runs and rides, totals and best efforts.
+- **Settings**: connect Strava, the race and its date, when week 1 starts, and your max and resting heart rate.
 
-**Today**
-- Next race, today's planned session, this week's time per sport against your target, sessions and streak,
-  current form with plain-words advice, quick starts and recent workouts.
-
-**Stats**
-- Weekly volume by sport against your target (6 weeks to 6 months).
-- Fitness, fatigue and form over 90 days (the standard training-load model, scored from heart rate when you
-  give your max HR, otherwise from your effort rating).
-- Personal bests (5 km, 10 km, half marathon, 400 m and 1500 m swims, 40 km ride, longest of each).
-- Lifetime totals per sport, gear wear with replacement warnings, and heart-rate zones.
-
-**Settings**
-- Name, km or miles, pool length (25 m, 50 m, 25 yd, 33 m), weekly target, max and resting heart rate
-  (with an estimate from age).
-- Sample data to try the app with, backup export and restore, and delete all.
+A workout counts as done at 80% of its planned time (or swim distance), as partly done below that, and as missed
+once its day has passed. A brick takes the ride and the run; a swim recorded in two parts is added up.
+Anything the watch recorded that the plan did not ask for shows as "Not in the plan".
 
 ## Run it
 
-You need Node 22 or newer (this project uses Expo SDK 58).
+Needs Node 22 or newer (Expo SDK 58).
 
     npm install
     npx expo start
 
-Scan the QR code with Expo Go (SDK 58) on your phone. Everything works in Expo Go, including GPS.
+Scan the QR code with Expo Go. Without Strava connected the app shows the plan and an empty stats page.
 
-To try it without logging anything first: Today → Explore with sample data (or Settings → Add sample data).
+## Connecting Strava
 
-## Install it on your phone
+Strava's sign-in needs a client secret, which must not ship inside an app. A small Cloudflare Worker in
+`worker/` holds it, handles sign-in and token renewal, and nothing else. The app talks to Strava directly for
+your activities.
 
-Build an APK with EAS (free Expo account needed):
+One time:
 
-    npx eas-cli@latest login
-    npm run build:android
+1. At <https://www.strava.com/settings/api> create an application. Set **Authorization Callback Domain** to the
+   Worker's host, for example `triathlon-tracker-api.<your-name>.workers.dev` (no `https://`).
+2. Deploy the Worker (needs Node 22):
 
-The first build asks to create the EAS project; say yes. When it finishes, open the link on your phone and
-install the APK. Each preview build gets a higher version number, so new builds install over old ones and
-keep your data.
+       cd worker
+       npm install
+       npx wrangler login
+       npx wrangler secret put STRAVA_CLIENT_ID
+       npx wrangler secret put STRAVA_CLIENT_SECRET
+       npx wrangler deploy
 
-## Good to know
+   `deploy` prints the Worker's address. Check `<address>/health` says `ok`.
+3. If the address differs from the default in `src/strava.ts`, set `EXPO_PUBLIC_API_URL` to it.
+4. In the app: Settings → Connect Strava. Tick "View data about your activities" on Strava's page.
 
-- **GPS only records while the app is on screen.** The screen stays on during a workout, but if you lock the
-  phone or switch apps, Android stops sending location to the app. The time keeps counting, and the gap is
-  filled with a straight line when you come back. Recording in the background needs a native foreground
-  service, which is a possible next step for an installed build.
-- **No map tiles.** Routes are drawn as a line (north up) rather than on a street map, so no map API key is
-  needed.
-- **Open-water swims** in race mode are timed only; enter the distance afterwards if you want it.
-- **Heart rate** is entered by hand; there is no watch or chest-strap connection.
-- **Your data stays on your phone.** Use Settings → Export backup to keep a copy.
+The Worker only sends tokens back to this app's own address (`triathlontracker://` or Expo Go's `exp://`).
+Tokens are kept in the phone's secure storage.
 
 ## Development
 
-    npm run check        # typecheck + lint + tests (what CI runs)
+    npm run check       # typecheck + lint + tests (what CI runs)
+    npm run typecheck
+    npm run lint
     npm test
 
-- `App.tsx`: the five tabs
-- `src/screens/`: Today, Track, Log, Plan, Stats and Settings
-- `src/components/`: shared building blocks, charts, workout and race pages
-- `src/lib/`: all the calculations, with no UI, each covered by tests:
-  `format` (units), `geo` (GPS maths), `session` (live recording), `load` (fitness/fatigue/form),
-  `races` (prediction), `plan` (plan generator), `stats`, `gear`, `zones`, `migrate` (saved data versions),
-  `sample`
-- `src/__tests__/`: unit tests for `src/lib` and smoke tests that drive the whole app
+## Structure
 
-GitHub Actions run typecheck, lint, tests and an Android bundle build on every push and pull request.
+- `src/app/` – screens (Expo Router): `(tabs)/` for Today, Plan, Stats and Settings, `day/[date]` for one day
+- `src/plan/` – the plan as data, and `schedule.ts`, which lays it on the calendar and fits race week to the race date
+- `src/matching.ts` – pairs planned workouts with what the watch recorded
+- `src/stats.ts` – weekly volume, compliance, training load, efficiency and best efforts
+- `src/activities.ts`, `src/strava.ts` – turning Strava activities into the app's own, sign-in and syncing
+- `src/store.tsx` – settings and synced activities, saved on the phone
+- `src/theme.ts` – colours (one per sport), spacing, text styles
+- `src/components/` – shared UI: cards and buttons, charts, workout cards
+- `worker/` – the Cloudflare Worker for Strava sign-in

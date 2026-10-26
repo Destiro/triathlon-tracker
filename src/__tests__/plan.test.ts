@@ -1,117 +1,60 @@
-import { generatePlan, MAX_WEEKS, phasesFor, planProgress, plannedMinutes, sessionStatus, sessionsOn, weekContaining } from '../lib/plan';
-import { Race } from '../types';
-import { multi, workout } from './fixtures';
+import { PLAN } from '../plan/data';
+import { Sport } from '../plan/types';
 
-const race = (date: string, distance: Race['distance'] = 'olympic'): Race => ({ id: 'r1', name: 'Test Tri', date, distance });
-const wednesday = new Date(2026, 9, 28, 9); // Wed 28 Oct 2026
+const minutes = (week: number, sport: Sport) =>
+  PLAN[week - 1].days
+    .flat()
+    .flatMap((w) => w.legs ?? [{ sport: w.kind as Sport, minutes: w.minutes, metres: w.metres }])
+    .filter((l) => l.sport === sport)
+    .reduce((sum, l) => sum + (l.minutes ?? 0), 0);
 
-describe('phasesFor', () => {
-  it('works backwards from race week', () => {
-    expect(phasesFor(12, 1)).toEqual(['base', 'base', 'base', 'base', 'base', 'build', 'build', 'build', 'peak', 'peak', 'taper', 'race']);
-    expect(phasesFor(3, 2)).toEqual(['taper', 'taper', 'race']);
-    expect(phasesFor(1, 1)).toEqual(['race']);
-    expect(phasesFor(0, 1)).toEqual([]);
-  });
-});
+const swimMetres = (week: number) =>
+  PLAN[week - 1].days
+    .flat()
+    .filter((w) => w.kind === 'swim')
+    .reduce((sum, w) => sum + (w.metres ?? 0), 0);
 
-describe('generatePlan', () => {
-  it('runs from this week to race week, ending on race day', () => {
-    const plan = generatePlan({ race: race('2027-01-23'), weeklyHours: 8, today: wednesday })!;
-    expect(plan.weeks[0].startDate).toBe('2026-10-26');
-    expect(plan.weeks).toHaveLength(13);
-    const last = plan.weeks[plan.weeks.length - 1];
-    expect(last.phase).toBe('race');
-    const raceDay = last.sessions[last.sessions.length - 1];
-    expect(raceDay).toMatchObject({ date: '2027-01-23', sport: 'race' });
-    // Nothing is planned after the race.
-    expect(last.sessions.every((s) => s.date <= '2027-01-23')).toBe(true);
+describe('the 20 week plan', () => {
+  it('has 20 numbered weeks of 7 days, with Monday off and race day last', () => {
+    expect(PLAN.map((w) => w.week)).toEqual(Array.from({ length: 20 }, (_, i) => i + 1));
+    for (const w of PLAN) expect(w.days).toHaveLength(7);
+    for (const w of PLAN) expect(w.days[0]).toEqual([]);
+    expect(PLAN[19].days[6][0].kind).toBe('race');
   });
 
-  it('starts next week when this week is mostly over', () => {
-    const plan = generatePlan({ race: race('2027-01-23'), weeklyHours: 8, today: new Date(2026, 9, 30) })!; // Friday
-    expect(plan.weeks[0].startDate).toBe('2026-11-02');
+  it('follows the phases described on the page: 8 base, 6 build, 6 peak, taper from week 19', () => {
+    const phase = (w: number) => PLAN[w - 1].phase;
+    expect([phase(1), phase(8)]).toEqual(['base', 'base']);
+    expect([phase(9), phase(14)]).toEqual(['build', 'build']);
+    expect([phase(15), phase(18)]).toEqual(['peak', 'peak']);
+    expect([phase(19), phase(20)]).toEqual(['taper', 'race']);
   });
 
-  it('builds volume, eases off every fourth week and tapers before the race', () => {
-    const plan = generatePlan({ race: race('2027-03-27', 'half'), weeklyHours: 10, today: wednesday })!;
-    const minutes = plan.weeks.map(plannedMinutes);
-    const firstBase = minutes[0];
-    const peak = Math.max(...plan.weeks.map((w, i) => (w.phase === 'peak' ? minutes[i] : 0)));
-    expect(peak).toBeGreaterThan(firstBase);
-    expect(peak).toBeLessThanOrEqual(10 * 60 * 1.1);
-    expect(plan.weeks[3].recovery).toBe(true);
-    expect(minutes[3]).toBeLessThan(minutes[2]);
-    const tapers = plan.weeks.filter((w) => w.phase === 'taper');
-    expect(tapers).toHaveLength(2);
-    for (const t of tapers) expect(plannedMinutes(t)).toBeLessThan(peak);
+  it('makes every fourth week a recovery week', () => {
+    expect(PLAN.filter((w) => w.recovery).map((w) => w.week)).toEqual([4, 8, 12, 16]);
   });
 
-  it('plans a rest day, bricks in build, and strength when there is time for it', () => {
-    const plan = generatePlan({ race: race('2027-03-27', 'half'), weeklyHours: 10, today: wednesday })!;
-    for (const week of plan.weeks.filter((w) => w.phase !== 'race')) {
-      expect(week.sessions.some((s) => s.sport === 'rest')).toBe(true);
-    }
-    const build = plan.weeks.find((w) => w.phase === 'build' && !w.recovery)!;
-    expect(build.sessions.some((s) => s.sport === 'brick')).toBe(true);
-    expect(build.sessions.some((s) => s.sport === 'strength')).toBe(true);
-    const light = generatePlan({ race: race('2027-03-27', 'sprint'), weeklyHours: 4, today: wednesday })!;
-    expect(light.weeks.flatMap((w) => w.sessions).some((s) => s.sport === 'strength')).toBe(false);
+  it('puts the optional tune-up races in weeks 12 and 16', () => {
+    expect(PLAN[11].days[6][0]).toMatchObject({ kind: 'race', title: 'Sprint Triathlon' });
+    expect(PLAN[15].days[6][0]).toMatchObject({ kind: 'race', title: 'Olympic-Distance Triathlon' });
   });
 
-  it('shares time sensibly between the three sports', () => {
-    const plan = generatePlan({ race: race('2027-01-23'), weeklyHours: 8, today: wednesday, strength: false })!;
-    const peak = plan.weeks.find((w) => w.phase === 'peak')!;
-    const by = (sport: string) => peak.sessions.filter((s) => s.sport === sport).reduce((t, s) => t + s.durationMin, 0);
-    expect(by('brick') + by('bike')).toBeGreaterThan(by('run'));
-    expect(by('run')).toBeGreaterThan(by('swim'));
+  it('matches the page week 1 totals for riding and running', () => {
+    expect(minutes(1, 'bike')).toBe(2 * 60 + 45);
+    expect(minutes(1, 'run')).toBe(60 + 45);
   });
 
-  it('tapers longer for longer races', () => {
-    const taper = (d: Race['distance']) => generatePlan({ race: race('2027-06-26', d), weeklyHours: 10, today: wednesday })!.weeks.filter((w) => w.phase === 'taper').length;
-    expect([taper('sprint'), taper('olympic'), taper('half'), taper('full')]).toEqual([1, 1, 2, 3]);
+  it('matches the page week 17 swim total (yards written as the same number of metres)', () => {
+    expect(swimMetres(17)).toBe(6700);
   });
 
-  it('caps very long plans and refuses a race in the past', () => {
-    const far = generatePlan({ race: race('2028-06-01'), weeklyHours: 8, today: wednesday })!;
-    expect(far.weeks).toHaveLength(MAX_WEEKS);
-    expect(generatePlan({ race: race('2026-10-01'), weeklyHours: 8, today: wednesday })).toBeNull();
+  it('adds up a swim from its warm-up, main set and cool-down', () => {
+    // Week 2 Sunday: WU 300, MS 1,000, CD 300.
+    const sunday = PLAN[1].days[6].find((w) => w.kind === 'swim');
+    expect(sunday?.metres).toBe(1600);
   });
 
-  it('handles a race this week with just race week', () => {
-    const plan = generatePlan({ race: race('2026-11-01'), weeklyHours: 8, today: wednesday })!;
-    expect(plan.weeks).toHaveLength(1);
-    expect(plan.weeks[0].phase).toBe('race');
-  });
-});
-
-describe('progress against the plan', () => {
-  const plan = generatePlan({ race: race('2027-01-23'), weeklyHours: 8, today: new Date(2026, 9, 26) })!;
-  const monday = new Date(2026, 9, 26);
-  const tuesdaySwim = sessionsOn(plan, new Date(2026, 9, 27)).find((s) => s.sport === 'swim')!;
-  const wednesdayBike = sessionsOn(plan, new Date(2026, 9, 28)).find((s) => s.sport === 'bike')!;
-
-  it('marks sessions done, missed, today or upcoming', () => {
-    const swam = [workout('2026-10-27', 'swim', 40, 2)];
-    expect(sessionStatus(tuesdaySwim, swam, wednesday)).toBe('done');
-    expect(sessionStatus(tuesdaySwim, [], wednesday)).toBe('missed');
-    expect(sessionStatus(wednesdayBike, [], wednesday)).toBe('today');
-    expect(sessionStatus(wednesdayBike, [], monday)).toBe('upcoming');
-    expect(sessionStatus(sessionsOn(plan, monday)[0], [], wednesday)).toBe('rest');
-  });
-
-  it('lets a brick or multisport workout count for a bike session', () => {
-    const brick = multi('2026-10-28', [
-      { sport: 'bike', durationSec: 3600, distanceM: 30_000 },
-      { sport: 'run', durationSec: 600, distanceM: 2000 },
-    ]);
-    expect(sessionStatus(wednesdayBike, [brick], wednesday)).toBe('done');
-  });
-
-  it('counts sessions done against those due', () => {
-    const progress = planProgress(plan, [workout('2026-10-27', 'swim', 40, 2)], wednesday);
-    expect(progress).toMatchObject({ done: 1, due: 2 });
-    expect(progress.total).toBeGreaterThan(30);
-    expect(weekContaining(plan, wednesday)?.index).toBe(0);
-    expect(weekContaining(null, wednesday)).toBeUndefined();
+  it('gives every workout at least one step to read', () => {
+    for (const w of PLAN.flatMap((week) => week.days.flat())) expect(w.steps.length).toBeGreaterThan(0);
   });
 });

@@ -19,15 +19,15 @@
       "predictiveBackGestureEnabled": false
     },
     "plugins": [
+      "expo-router",
       "expo-font",
-      [
-        "expo-location",
-        {
-          "locationWhenInUsePermission": "Triathlon Tracker uses your location while you record a run or ride, to measure distance, pace and your route.",
-          "isAndroidBackgroundLocationEnabled": false
-        }
-      ],
-      "expo-asset"
-    ]
+      "expo-asset",
+      "expo-secure-store",
+      "expo-web-browser"
+    ],
+    "scheme": "triathlontracker",
+    "experiments": {
+      "typedRoutes": true
+    }
   }
 }

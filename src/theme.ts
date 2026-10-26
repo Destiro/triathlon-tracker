@@ -1,4 +1,4 @@
-import { PlanSport, Sport } from './types';
+import { WorkoutKind } from './plan/types';
 
 // Central design tokens. Change these and the whole app follows.
 export const colors = {
@@ -19,29 +19,33 @@ export const colors = {
 };
 
 /** One colour per discipline, used for icons, chart bars and badges everywhere. */
-export const sportColors: Record<Sport | PlanSport | 'multisport', string> = {
+export const sportColors: Record<WorkoutKind | 'other', string> = {
   swim: '#0EA5E9',
   bike: '#F59E0B',
   run: '#16A34A',
-  strength: '#8B5CF6',
-  transition: '#94A3B8',
   brick: '#EA580C',
-  rest: '#94A3B8',
   race: '#DC2626',
-  multisport: '#1E5BC6',
+  other: '#94A3B8',
+};
+
+/** The same colours, faded, for backgrounds and for what was planned but not yet done. */
+export const sportTints: Record<WorkoutKind | 'other', string> = {
+  swim: '#E0F2FE',
+  bike: '#FEF3C7',
+  run: '#DCFCE7',
+  brick: '#FFEDD5',
+  race: '#FEE2E2',
+  other: '#F1F5F9',
 };
 
 /** MaterialCommunityIcons names for each discipline. */
-export const sportIcons: Record<Sport | PlanSport | 'multisport', string> = {
+export const sportIcons: Record<WorkoutKind | 'other', string> = {
   swim: 'swim',
   bike: 'bike',
   run: 'run',
-  strength: 'dumbbell',
-  transition: 'swap-horizontal',
   brick: 'lightning-bolt',
-  rest: 'sleep',
   race: 'flag-checkered',
-  multisport: 'trophy-outline',
+  other: 'dumbbell',
 };
 
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 };
