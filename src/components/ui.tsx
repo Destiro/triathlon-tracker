@@ -17,12 +17,12 @@ export function Button({ label, onPress, variant = 'primary', disabled }: Button
       disabled={disabled}
       style={({ pressed }) => [styles.button, primary ? styles.primary : styles.quiet, (pressed || disabled) && { opacity: 0.6 }]}
     >
-      <Text style={[styles.buttonLabel, { color: primary ? '#fff' : colors.accent }]}>{label}</Text>
+      <Text style={[styles.buttonLabel, { color: primary ? colors.onAccent : colors.accent }]}>{label}</Text>
     </Pressable>
   );
 }
 
-/** A white rounded card, optionally with a heading. */
+/** A rounded card, optionally with a heading. */
 export function Card({ title, note, children, style }: { title?: string; note?: string; children: React.ReactNode; style?: object }) {
   return (
     <View style={[styles.card, style]}>

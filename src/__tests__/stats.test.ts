@@ -1,6 +1,6 @@
 import { byDate } from '../activities';
 import { buildSchedule } from '../plan/schedule';
-import { efficiency, loadSeries, records, trainingLoad, weekCompliance, weekVolume } from '../stats';
+import { efficiency, loadSeries, records, trainingLoad, upNext, weekCompliance, weekVolume } from '../stats';
 import { activity } from './helpers';
 
 const hr = { maxHr: 190, restHr: 50 };
@@ -68,5 +68,35 @@ describe('efficiency and records', () => {
     expect(found['Longest run']).toBe(3);
     // 6 km at 5:00 per km beats 10 km at 5:30 per km.
     expect(found['Fastest run pace (5 km+)']).toBe(1);
+  });
+});
+
+describe('upNext', () => {
+  // Friday 6 November 2026, week 3: a 1,400 m swim then a 40 min Foundation Run.
+  const friday = '2026-11-06';
+
+  it('is the first workout today that has not been recorded', () => {
+    const next = upNext(schedule, new Map(), friday);
+    expect(next?.date).toBe(friday);
+    expect(next?.index).toBe(0);
+    expect(next?.result.workout.kind).toBe('swim');
+  });
+
+  it('moves on to the run once the swim is in', () => {
+    const swum = byDate([activity({ id: 1, sport: 'swim', date: friday, distanceM: 1450, movingS: 1880 })]);
+    const next = upNext(schedule, swum, friday);
+    expect(next?.index).toBe(1);
+    expect(next?.result.workout.title).toBe('Foundation Run');
+  });
+
+  it('looks ahead to the next day with workouts when today is done or a rest day', () => {
+    const monday = '2026-11-09'; // week 4 Monday: rest
+    const next = upNext(schedule, new Map(), monday);
+    expect(next?.date).toBe('2026-11-10');
+    expect(next?.result.status).toBe('upcoming');
+  });
+
+  it('is null once the race is over', () => {
+    expect(upNext(schedule, new Map(), '2027-03-06')).toBeNull();
   });
 });

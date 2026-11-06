@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
-import Svg, { Line, Path, Rect, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { colors, spacing } from '../theme';
 
 const PAD = { left: 34, right: 8, top: 8, bottom: 22 };
@@ -179,3 +179,32 @@ const styles = StyleSheet.create({
   swatch: { width: 12, height: 3, borderRadius: 2 },
   legendText: { fontSize: 12, color: colors.inkSoft },
 });
+
+/** A progress ring with the percentage in the middle. `value` runs from 0 to 1; it is drawn capped at 1. */
+export function Ring({ value, color, tint, size = 64, stroke = 7 }: { value: number; color: string; tint: string; size?: number; stroke?: number }) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const shown = Math.max(0, Math.min(value, 1));
+  return (
+    <Svg width={size} height={size}>
+      <Circle cx={size / 2} cy={size / 2} r={r} stroke={tint} strokeWidth={stroke} fill="none" />
+      {shown > 0 && (
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          stroke={color}
+          strokeWidth={stroke}
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray={`${c} ${c}`}
+          strokeDashoffset={c * (1 - shown)}
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+      )}
+      <SvgText x={size / 2} y={size / 2 + 5} fontSize={14} fontWeight="700" fontFamily="monospace" fill={colors.ink} textAnchor="middle">
+        {`${Math.round(value * 100)}%`}
+      </SvgText>
+    </Svg>
+  );
+}
