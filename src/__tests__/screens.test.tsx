@@ -52,6 +52,11 @@ test('Today shows every workout for the day at once, with its detail', async () 
   // The run's steps and the recorded swim are on the page, so there is nothing to open.
   expect(screen.getByText('MS: 20 min @ moderate aerobic intensity')).toBeTruthy();
   expect(screen.getByText('Morning Swim')).toBeTruthy();
+  // The warm-up / main set / cool-down bar has units on every part and states the whole amount.
+  expect(screen.getByText('Main 800 m')).toBeTruthy();
+  expect(screen.getByText('Main 20 min')).toBeTruthy();
+  expect(screen.getByText('1,400 m in total')).toBeTruthy();
+  expect(screen.getByText('40 min in total')).toBeTruthy();
   expect(screen.getByText('This week')).toBeTruthy();
   for (const gone of ['UP NEXT', 'Up next', 'Later today', 'Done today']) expect(screen.queryByText(gone)).toBeNull();
 });
