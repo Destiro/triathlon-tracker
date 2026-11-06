@@ -16,7 +16,9 @@ and kept here as the same number in metres.
 
 - **Today**: days to the race, today's workouts with their warm-up, main set and cool-down, whether each is
   done, a week strip, and this week's swim, bike and run against the plan.
-- **Plan**: all 20 weeks laid out on real dates, with how much of each week you have done. Tap any day.
+- **Plan**: a month calendar. Each day has a dot per workout in its sport's colour, solid once done. Each week
+  shows its planned hours, and finished weeks fade. Tap a day to see its workouts underneath, or open it to move a
+  workout or see what the watch recorded.
 - **Editing the plan**: on a day, move a workout to another day, or put it back. Add your own sessions, such as
   gym, once or every week until the race. Your changes are saved apart from the plan, so the plan itself is
   never altered. The watch ticks a moved workout off on its new day. Strength activities from Strava (weight

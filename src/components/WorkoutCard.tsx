@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Activity } from '../activities';
 import { fromKey } from '../dates';
 import { formatClock, formatDistance, formatMinutes } from '../format';
@@ -9,7 +9,7 @@ import { PlannedWorkout } from '../plan/types';
 import { colors, radius, spacing, type } from '../theme';
 import { colorOf, SPORT_LABELS, SportBadge } from './sport';
 
-const STATUS: Record<Status, { icon: string; color: string; label: string }> = {
+export const STATUS: Record<Status, { icon: string; color: string; label: string }> = {
   done: { icon: 'check-circle', color: colors.accent, label: 'Done' },
   partial: { icon: 'check-circle-outline', color: colors.warning, label: 'Partly done' },
   missed: { icon: 'close-circle-outline', color: colors.danger, label: 'Missed' },
@@ -28,13 +28,22 @@ export function plannedAmount(w: PlannedWorkout): string {
 export const doneSummary = (a: Activity): string =>
   [a.distanceM > 0 ? formatDistance(a.distanceM, a.sport === 'swim') : '', formatClock(a.movingS)].filter(Boolean).join(' · ');
 
+/** A row along the bottom of the card, such as "Move to another day". */
+export interface CardAction {
+  label: string;
+  icon: string;
+  onPress: () => void;
+  danger?: boolean;
+}
+
 interface Props {
   result: WorkoutResult;
   /** Show the warm-up / main set / cool-down lines. */
   detailed?: boolean;
+  actions?: CardAction[];
 }
 
-export function WorkoutCard({ result, detailed }: Props) {
+export function WorkoutCard({ result, detailed, actions }: Props) {
   const { workout, status, activities } = result;
   const s = STATUS[status];
   return (
@@ -72,6 +81,14 @@ export function WorkoutCard({ result, detailed }: Props) {
           ))}
         </View>
       )}
+
+      {actions?.map((a) => (
+        <Pressable key={a.label} onPress={a.onPress} style={({ pressed }) => [styles.action, pressed && { opacity: 0.6 }]} accessibilityRole="button">
+          <MaterialCommunityIcons name={a.icon as never} size={18} color={a.danger ? colors.danger : colors.accent} />
+          <Text style={[styles.actionLabel, a.danger && { color: colors.danger }]}>{a.label}</Text>
+          <MaterialCommunityIcons name="chevron-right" size={20} color={colors.inkFaint} />
+        </Pressable>
+      ))}
     </View>
   );
 }
@@ -85,7 +102,20 @@ const styles = StyleSheet.create({
     borderLeftWidth: 5,
     padding: spacing.md,
     gap: spacing.sm,
+    overflow: 'hidden',
   },
+  // Full width of the card, divided from what's above by a thin line.
+  action: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginHorizontal: -spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+  },
+  actionLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.accent },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   main: { flex: 1 },
   moved: { fontSize: 12, fontWeight: '600', color: colors.warning },

@@ -45,6 +45,18 @@ export function weekVolume(schedule: Schedule, activitiesByDate: Map<string, Act
   return volume;
 }
 
+// Swims are planned by distance. At an easy pool pace of about 2:30 per 100 m, this is how long they take.
+const SWIM_MINUTES_PER_100M = 2.5;
+
+/** Hours of training planned for one plan week, as minutes. Swims are turned into time at an easy pool pace. */
+export function weekMinutes(schedule: Schedule, week: number): number {
+  let minutes = 0;
+  for (const day of daysOfWeek(schedule, week)) {
+    for (const w of day.workouts) minutes += w.kind === 'swim' ? ((w.metres ?? 0) / 100) * SWIM_MINUTES_PER_100M : (w.minutes ?? 0);
+  }
+  return minutes;
+}
+
 /** Gym and strength minutes for one plan week: the sessions planned (your own) against what the watch recorded. */
 export function weekGym(schedule: Schedule, activitiesByDate: Map<string, Activity[]>, week: number): Volume {
   const volume = { planned: 0, actual: 0 };

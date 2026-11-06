@@ -1,6 +1,7 @@
 import { byDate } from '../activities';
+import { addSessions, applyEdits, NO_EDITS } from '../plan/edits';
 import { buildSchedule } from '../plan/schedule';
-import { efficiency, loadSeries, records, trainingLoad, upNext, weekCompliance, weekVolume } from '../stats';
+import { efficiency, loadSeries, records, trainingLoad, upNext, weekCompliance, weekMinutes, weekVolume } from '../stats';
 import { activity } from './helpers';
 
 const hr = { maxHr: 190, restHr: 50 };
@@ -98,5 +99,17 @@ describe('upNext', () => {
 
   it('is null once the race is over', () => {
     expect(upNext(schedule, new Map(), '2027-03-06')).toBeNull();
+  });
+});
+
+describe('weekMinutes', () => {
+  it('adds up a week of rides, runs and swims, turning swim metres into time', () => {
+    // Week 3: bike 50 + 60 + 75, run 35 + 40 + 45, swims 1,400 + 1,400 + 1,700 m = 4,500 m at 2.5 min per 100 m.
+    expect(weekMinutes(schedule, 3)).toBeCloseTo(185 + 120 + 112.5);
+  });
+
+  it('counts a gym session you added', () => {
+    const withGym = applyEdits(schedule, addSessions(NO_EDITS, { date: '2026-11-10', title: 'Gym', minutes: 45, repeatWeekly: false }, '2027-03-05', () => 'x'));
+    expect(weekMinutes(withGym, 4) - weekMinutes(schedule, 4)).toBe(45);
   });
 });
