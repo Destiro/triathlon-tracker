@@ -1,106 +1,143 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, ScrollViewInstance, StyleSheet, Text, View } from 'react-native';
-import { AddSessionSheet } from '../../components/PlanSheets';
-import { Button } from '../../components/ui';
+import React, { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colorOf, tintOf } from '../../components/sport';
-import { formatDay, fromKey } from '../../dates';
-import { formatMinutes } from '../../format';
-import { daysOfWeek, PHASE_LABELS, TOTAL_WEEKS } from '../../plan/schedule';
-import { dayResult, SPORTS, unitOf, weekCompliance, weekGym, weekVolume } from '../../stats';
+import { MonthGrid } from '../../components/MonthGrid';
+import { AddSessionSheet } from '../../components/PlanSheets';
+import { SPORT_LABELS, SportBadge, colorOf } from '../../components/sport';
+import { Card } from '../../components/ui';
+import { plannedAmount, STATUS } from '../../components/WorkoutCard';
+import { addMonths, formatDay, formatMonth, fromKey, startOfMonth } from '../../dates';
+import { PHASE_LABELS } from '../../plan/schedule';
+import { dayResult } from '../../stats';
 import { useStore, useTodayKey } from '../../store';
 import { colors, radius, spacing, type } from '../../theme';
 
+const LEGEND = ['swim', 'bike', 'run', 'brick', 'gym'] as const;
+
 export default function PlanScreen() {
   const { schedule, activitiesByDate, settings, addSession } = useStore();
-  const [adding, setAdding] = useState(false);
   const todayKey = useTodayKey();
-  const currentWeek = schedule.get(todayKey)?.week ?? (todayKey < settings.planStart ? 1 : TOTAL_WEEKS);
-  const scroll = useRef<ScrollViewInstance>(null);
-  const weekY = useRef<Record<number, number>>({});
+  const home = schedule.has(todayKey) ? todayKey : settings.planStart;
+  const [selected, setSelected] = useState(home);
+  const [month, setMonth] = useState(startOfMonth(fromKey(home)));
+  const [adding, setAdding] = useState(false);
 
-  // Open at the current week rather than the top of a 20-week list.
-  useEffect(() => {
-    const timer = setTimeout(() => scroll.current?.scrollTo({ y: Math.max((weekY.current[currentWeek] ?? 0) - spacing.lg, 0), animated: false }), 50);
-    return () => clearTimeout(timer);
-  }, [currentWeek]);
+  const firstMonth = startOfMonth(fromKey(settings.planStart));
+  const lastMonth = startOfMonth(fromKey(settings.raceDate));
+  const canGoBack = month > firstMonth;
+  const canGoOn = month < lastMonth;
+
+  const day = schedule.get(selected);
+  const result = dayResult(schedule, activitiesByDate, selected, todayKey);
+  const atHome = selected === home && month.getTime() === startOfMonth(fromKey(home)).getTime();
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <ScrollView ref={scroll} contentContainerStyle={styles.list}>
-        <Text style={type.title}>Training plan</Text>
-        <Text style={type.small}>20 weeks to {settings.raceName}. Tap a day to see the workout, move it or add your own session.</Text>
-        <Button label="Add a session" variant="quiet" onPress={() => setAdding(true)} />
-
-        {Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1).map((week) => {
-          const days = daysOfWeek(schedule, week);
-          if (days.length === 0) return null;
-          const first = days[0];
-          const compliance = weekCompliance(schedule, activitiesByDate, week, todayKey);
-          const volume = weekVolume(schedule, activitiesByDate, week);
-          const gym = weekGym(schedule, activitiesByDate, week);
-          const isCurrent = week === currentWeek;
-          return (
-            <View
-              key={week}
-              onLayout={(e) => (weekY.current[week] = e.nativeEvent.layout.y)}
-              style={[styles.card, isCurrent && styles.cardCurrent]}
+      <ScrollView contentContainerStyle={styles.list}>
+        <View style={styles.titleRow}>
+          <Text style={type.title}>Plan</Text>
+          {!atHome && (
+            <Pressable
+              onPress={() => {
+                setSelected(home);
+                setMonth(startOfMonth(fromKey(home)));
+              }}
+              style={styles.todayButton}
+              accessibilityRole="button"
+              accessibilityLabel="Jump to today"
             >
-              <View style={styles.cardHeader}>
-                <Text style={type.heading}>Week {week}</Text>
-                <Text style={styles.phase}>
-                  {PHASE_LABELS[first.phase]}
-                  {first.recovery ? ' · recovery' : ''}
-                </Text>
-              </View>
-              <Text style={type.small}>
-                {fromKey(first.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} –{' '}
-                {fromKey(days[days.length - 1].date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
-                {compliance.due ? ` · ${Math.round((compliance.score / compliance.due) * 100)}% done` : ''}
+              <Text style={styles.todayText}>Today</Text>
+            </Pressable>
+          )}
+        </View>
+
+        <View style={styles.monthRow}>
+          <Pressable onPress={() => setMonth(addMonths(month, -1))} disabled={!canGoBack} hitSlop={12} accessibilityLabel="Previous month">
+            <MaterialCommunityIcons name="chevron-left" size={30} color={canGoBack ? colors.accent : colors.inkFaint} />
+          </Pressable>
+          <Text style={type.heading}>{formatMonth(month)}</Text>
+          <Pressable onPress={() => setMonth(addMonths(month, 1))} disabled={!canGoOn} hitSlop={12} accessibilityLabel="Next month">
+            <MaterialCommunityIcons name="chevron-right" size={30} color={canGoOn ? colors.accent : colors.inkFaint} />
+          </Pressable>
+        </View>
+
+        <MonthGrid
+          month={month}
+          schedule={schedule}
+          activitiesByDate={activitiesByDate}
+          todayKey={todayKey}
+          selected={selected}
+          onSelect={setSelected}
+        />
+
+        <View style={styles.legend}>
+          {LEGEND.map((k) => (
+            <View key={k} style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: colorOf(k) }]} />
+              <Text style={type.small}>{SPORT_LABELS[k]}</Text>
+            </View>
+          ))}
+        </View>
+
+        {day && (
+          <>
+            <View style={styles.dayHeader}>
+              <Text style={type.heading}>
+                {formatDay(fromKey(selected))}
+                {selected === todayKey ? ' · Today' : ''}
               </Text>
-
-              <View style={styles.week}>
-                {days.map((d) => {
-                  const r = dayResult(schedule, activitiesByDate, d.date, todayKey);
-                  return (
-                    <Pressable
-                      key={d.date}
-                      style={[styles.day, d.date === todayKey && styles.dayToday]}
-                      onPress={() => router.push({ pathname: '/day/[date]', params: { date: d.date } })}
-                      accessibilityLabel={formatDay(fromKey(d.date))}
-                    >
-                      <Text style={styles.dayLabel}>{fromKey(d.date).toLocaleDateString(undefined, { weekday: 'narrow' })}</Text>
-                      <View style={styles.dots}>
-                        {d.workouts.length === 0 && <View style={[styles.dot, { borderColor: colors.line, backgroundColor: colors.line }]} />}
-                        {d.workouts.map((w, i) => {
-                          const status = r.results[i]?.status;
-                          const done = status === 'done' || status === 'partial';
-                          return <View key={i} style={[styles.dot, { borderColor: colorOf(w.kind), backgroundColor: done ? colorOf(w.kind) : tintOf(w.kind) }]} />;
-                        })}
-                      </View>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              <Text style={type.small}>
-                {SPORTS.map((s) =>
-                  unitOf(s) === 'metres'
-                    ? `Swim ${(volume[s].planned / 1000).toFixed(1)} km`
-                    : `${s === 'bike' ? 'Bike' : 'Run'} ${formatMinutes(volume[s].planned)}`,
-                ).join(' · ')}
-                {gym.planned > 0 ? ` · Gym ${formatMinutes(gym.planned)}` : ''}
+              <Text style={styles.phase}>
+                Week {day.week} · {PHASE_LABELS[day.phase]}
+                {day.recovery ? ' · recovery' : ''}
               </Text>
             </View>
-          );
-        })}
+
+            {result.results.length === 0 && (
+              <Card>
+                <Text style={type.body}>Rest day. Recovery is part of the plan.</Text>
+              </Card>
+            )}
+            {result.results.map((r, i) => {
+              const s = STATUS[r.status];
+              return (
+                <Pressable
+                  key={i}
+                  onPress={() => router.push({ pathname: '/day/[date]', params: { date: selected } })}
+                  style={[styles.workout, { borderLeftColor: colorOf(r.workout.kind) }]}
+                  accessibilityRole="button"
+                >
+                  <SportBadge kind={r.workout.kind} size={32} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={type.heading}>{r.workout.title}</Text>
+                    <Text style={type.small}>
+                      {SPORT_LABELS[r.workout.kind]}
+                      {plannedAmount(r.workout) ? ` · ${plannedAmount(r.workout)}` : ''}
+                      {r.workout.custom ? ' · added by you' : ''}
+                      {r.workout.movedFrom ? ' · moved' : ''}
+                    </Text>
+                  </View>
+                  <MaterialCommunityIcons name={s.icon as never} size={24} color={s.color} accessibilityLabel={s.label} />
+                </Pressable>
+              );
+            })}
+            {result.extras.length > 0 && <Text style={type.small}>Not in the plan: {result.extras.map((a) => a.name).join(', ')}</Text>}
+
+            <Pressable onPress={() => setAdding(true)} style={styles.add} accessibilityRole="button">
+              <MaterialCommunityIcons name="plus-circle-outline" size={22} color={colors.accent} />
+              <Text style={styles.addText}>Add a session on this day</Text>
+            </Pressable>
+          </>
+        )}
+        <View style={{ height: spacing.md }} />
       </ScrollView>
+
       {adding && (
         <AddSessionSheet
           visible
           schedule={schedule}
-          initialDate={schedule.has(todayKey) ? todayKey : settings.planStart}
+          initialDate={selected}
           onClose={() => setAdding(false)}
           onSave={(session) => {
             addSession(session);
@@ -115,14 +152,35 @@ export default function PlanScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   list: { padding: spacing.lg, gap: spacing.md },
-  card: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, padding: spacing.lg, gap: spacing.sm },
-  cardCurrent: { borderColor: colors.accent, borderWidth: 2 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  todayButton: { backgroundColor: colors.accentSoft, borderRadius: radius.pill, paddingVertical: 6, paddingHorizontal: spacing.md },
+  todayText: { color: colors.accent, fontWeight: '700', fontSize: 13 },
+  monthRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  legend: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: { width: 9, height: 9, borderRadius: 5 },
+  dayHeader: { gap: 2, marginTop: spacing.sm },
   phase: { fontSize: 13, fontWeight: '600', color: colors.accent },
-  week: { flexDirection: 'row', gap: 2 },
-  day: { flex: 1, alignItems: 'center', paddingVertical: spacing.sm, borderRadius: radius.sm, gap: 6 },
-  dayToday: { backgroundColor: colors.accentSoft },
-  dayLabel: { fontSize: 12, color: colors.inkSoft },
-  dots: { flexDirection: 'row', gap: 3, height: 12, alignItems: 'center' },
-  dot: { width: 10, height: 10, borderRadius: 5, borderWidth: 1.5 },
+  workout: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderLeftWidth: 5,
+    padding: spacing.md,
+  },
+  add: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    padding: spacing.md,
+  },
+  addText: { color: colors.accent, fontWeight: '600', fontSize: 14 },
 });

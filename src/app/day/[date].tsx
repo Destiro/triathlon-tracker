@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AddSessionSheet, MoveSheet } from '../../components/PlanSheets';
-import { Button, Card, Empty } from '../../components/ui';
-import { doneSummary, WorkoutCard } from '../../components/WorkoutCard';
+import { Card, Empty } from '../../components/ui';
+import { CardAction, doneSummary, WorkoutCard } from '../../components/WorkoutCard';
 import { SportBadge } from '../../components/sport';
 import { formatDay, fromKey, isDateKey } from '../../dates';
 import { formatRunPace, formatSpeed, formatSwimPace } from '../../format';
@@ -42,6 +42,18 @@ export default function DayScreen() {
     ]);
   };
 
+  /** What can be done to a workout, as rows along the bottom of its card. A finished workout stays where it is. */
+  const actionsFor = (w: PlannedWorkout, done: boolean): CardAction[] => {
+    const actions: CardAction[] = [];
+    if (w.id && w.kind !== 'race' && !done) actions.push({ label: 'Move to another day', icon: 'calendar-arrow-right', onPress: () => setMoving(w) });
+    if (w.movedFrom) {
+      const planned = fromKey(w.movedFrom).toLocaleDateString(undefined, { weekday: 'long' });
+      actions.push({ label: `Put back on ${planned}`, icon: 'undo', onPress: () => moveWorkout(w.id!, w.movedFrom!, w.movedFrom!) });
+    }
+    if (w.custom) actions.push({ label: 'Remove', icon: 'trash-can-outline', danger: true, onPress: () => askRemove(w) });
+    return actions;
+  };
+
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <View style={styles.header}>
@@ -74,28 +86,7 @@ export default function DayScreen() {
         ) : (
           result.results.map((r, i) => (
             <View key={i} style={{ gap: spacing.sm }}>
-              <WorkoutCard result={r} detailed />
-              <View style={styles.actions}>
-                {r.workout.id && r.workout.kind !== 'race' && (
-                  <View style={{ flex: 1 }}>
-                    <Button label="Move to another day" variant="quiet" onPress={() => setMoving(r.workout)} />
-                  </View>
-                )}
-                {r.workout.movedFrom && (
-                  <View style={{ flex: 1 }}>
-                    <Button
-                      label="Put back"
-                      variant="quiet"
-                      onPress={() => moveWorkout(r.workout.id!, r.workout.movedFrom!, r.workout.movedFrom!)}
-                    />
-                  </View>
-                )}
-                {r.workout.custom && (
-                  <View style={{ flex: 1 }}>
-                    <Button label="Remove" variant="quiet" onPress={() => askRemove(r.workout)} />
-                  </View>
-                )}
-              </View>
+              <WorkoutCard result={r} detailed actions={actionsFor(r.workout, r.status === 'done')} />
               {r.activities.map((a) => (
                 <Card key={a.id}>
                   <Text style={type.heading}>{a.name}</Text>
@@ -166,6 +157,5 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, padding: spacing.lg, paddingBottom: spacing.sm },
   list: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.md },
-  actions: { flexDirection: 'row', gap: spacing.sm },
   extra: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
 });
