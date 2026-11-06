@@ -48,7 +48,7 @@ export function WorkoutCard({ result, detailed, actions }: Props) {
   const { workout, status, activities } = result;
   const s = STATUS[status];
   const blocks = detailed ? stepBlocks(workout) : null;
-  const unit = workout.kind === 'swim' ? '' : ' min';
+  const unit = workout.kind === 'swim' ? ' m' : ' min';
   return (
     <View style={[styles.card, { borderLeftColor: colorOf(workout.kind) }]}>
       <View style={styles.row}>
@@ -78,15 +78,17 @@ export function WorkoutCard({ result, detailed, actions }: Props) {
       {detailed && (
         <View style={styles.steps}>
           {blocks && (
-            <View style={styles.bar}>
-              {blocks.map((b) => (
-                <View key={b.label} style={[styles.block, { flex: b.amount, backgroundColor: b.label === 'Main' ? colorOf(workout.kind) : tintOf(workout.kind) }]}>
-                  <Text style={[styles.blockText, b.label === 'Main' && { color: colors.onAccent }]} numberOfLines={1}>
-                    {b.label} {b.amount}
-                    {unit}
-                  </Text>
-                </View>
-              ))}
+            <View style={{ gap: 4, marginBottom: spacing.xs }}>
+              <View style={styles.bar}>
+                {blocks.map((b) => (
+                  <View key={b.label} style={[styles.block, { flex: b.amount, backgroundColor: tintOf(workout.kind), borderColor: `${colorOf(workout.kind)}66` }]}>
+                    <Text style={styles.blockText} numberOfLines={1}>
+                      {`${b.label} ${b.amount.toLocaleString('en-US')}${unit}`}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+              <Text style={styles.total}>{plannedAmount(workout)} in total</Text>
             </View>
           )}
           {workout.steps.map((line, i) => (
@@ -137,8 +139,9 @@ const styles = StyleSheet.create({
   status: { width: 28, alignItems: 'center' },
   done: { fontSize: 13, color: colors.accent, fontWeight: '600' },
   steps: { gap: 4, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, paddingTop: spacing.sm },
-  bar: { flexDirection: 'row', gap: 3, height: 24, borderRadius: radius.sm - 2, overflow: 'hidden', marginBottom: spacing.xs },
-  block: { justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 },
-  blockText: { fontSize: 11, fontWeight: '800', color: colors.ink },
+  bar: { flexDirection: 'row', gap: 3, height: 26 },
+  block: { justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4, borderWidth: 1, borderRadius: radius.sm - 2 },
+  blockText: { fontSize: 11, fontWeight: '600', color: colors.ink },
+  total: { fontSize: 12, color: colors.inkSoft },
   step: { fontSize: 14, color: colors.ink, lineHeight: 20 },
 });
