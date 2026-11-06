@@ -1,16 +1,19 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { fromKey } from '../dates';
 import { formatRunPace, formatSpeed, formatSwimPace } from '../format';
 import { sessionIdOf } from '../plan/edits';
 import { PlannedWorkout } from '../plan/types';
-import { dayResult } from '../stats';
+import { dayResult, highestHeartRate } from '../stats';
 import { useStore, useTodayKey } from '../store';
-import { spacing, type } from '../theme';
+import { colors, radius, spacing, type } from '../theme';
+import { targetZones, zoneSeconds } from '../zones';
 import { MoveSheet } from './PlanSheets';
 import { SportBadge } from './sport';
 import { Card } from './ui';
 import { CardAction, doneSummary, WorkoutCard } from './WorkoutCard';
+import { ZoneBars } from './ZoneBars';
 
 /**
  * Everything about one day's training in one place: each planned workout with its steps, what the watch recorded
@@ -18,12 +21,14 @@ import { CardAction, doneSummary, WorkoutCard } from './WorkoutCard';
  * and for any other day, so neither needs a screen of its own to open a workout.
  */
 export function DayWorkouts({ date }: { date: string }) {
-  const { schedule, activitiesByDate, moveWorkout, removeSession } = useStore();
+  const { schedule, activities, settings, activitiesByDate, moveWorkout, removeSession, setOpenWater } = useStore();
   const todayKey = useTodayKey();
   const [moving, setMoving] = useState<PlannedWorkout | null>(null);
   const day = schedule.get(date);
   if (!day) return null;
   const result = dayResult(schedule, activitiesByDate, date, todayKey);
+  // The same max heart rate the training load uses: the setting, or higher if the watch has seen higher.
+  const maxHr = Math.max(settings.maxHr, highestHeartRate(activities));
 
   const askRemove = (w: PlannedWorkout) => {
     const id = sessionIdOf(w.id ?? '');
@@ -66,7 +71,20 @@ export function DayWorkouts({ date }: { date: string }) {
           <WorkoutCard result={r} detailed actions={actionsFor(r.workout, r.status === 'done')} />
           {r.activities.map((a) => (
             <Card key={a.id}>
-              <Text style={type.heading}>{a.name}</Text>
+              <View style={styles.titleRow}>
+                <Text style={[type.heading, { flex: 1 }]}>{a.name}</Text>
+                {a.sport === 'swim' && (
+                  <Pressable
+                    onPress={() => setOpenWater(a.id, !a.openWater)}
+                    style={styles.water}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Swim recorded in ${a.openWater ? 'open water' : 'a pool'}. Tap to change.`}
+                  >
+                    <MaterialCommunityIcons name="swap-horizontal" size={14} color={colors.accent} />
+                    <Text style={styles.waterText}>{a.openWater ? 'Open water' : 'Pool'}</Text>
+                  </Pressable>
+                )}
+              </View>
               <Text style={type.small}>{doneSummary(a)}</Text>
               <Text style={type.small}>
                 {[
@@ -77,6 +95,7 @@ export function DayWorkouts({ date }: { date: string }) {
                   .filter(Boolean)
                   .join(' · ')}
               </Text>
+              {a.hr && <ZoneBars seconds={zoneSeconds(a.hr, maxHr)} target={targetZones(r.workout)} maxHr={maxHr} />}
             </Card>
           ))}
         </View>
@@ -117,5 +136,8 @@ export function DayWorkouts({ date }: { date: string }) {
 }
 
 const styles = StyleSheet.create({
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  water: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.accentSoft, borderRadius: radius.pill, paddingVertical: 4, paddingHorizontal: spacing.sm },
+  waterText: { fontSize: 12, fontWeight: '700', color: colors.accent },
   extra: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
 });

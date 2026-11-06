@@ -216,30 +216,92 @@ export function totals(activities: Activity[], sinceKey: string): Record<Discipl
   return out;
 }
 
+/** What a best effort is measured by. */
+export type Measure = 'distance' | 'speed' | 'climb';
+
 export interface BestEffort {
   label: string;
   sport: Sport;
+  measure: Measure;
   activity: Activity;
 }
+
+/** The kinds of best effort that are tracked. Fastest needs a decent distance so a sprint doesn't count. */
+const CATEGORIES: { label: string; sport: Sport; measure: Measure; minM: number }[] = [
+  { label: 'Longest swim', sport: 'swim', measure: 'distance', minM: 0 },
+  { label: 'Fastest swim pace (1 km+)', sport: 'swim', measure: 'speed', minM: 1000 },
+  { label: 'Longest ride', sport: 'bike', measure: 'distance', minM: 0 },
+  { label: 'Fastest ride (20 km+)', sport: 'bike', measure: 'speed', minM: 20000 },
+  { label: 'Most climbing', sport: 'bike', measure: 'climb', minM: 0 },
+  { label: 'Longest run', sport: 'run', measure: 'distance', minM: 0 },
+  { label: 'Fastest run pace (5 km+)', sport: 'run', measure: 'speed', minM: 5000 },
+];
+
+const SCORES: Record<Measure, (a: Activity) => number> = {
+  distance: (a) => a.distanceM,
+  speed: (a) => a.distanceM / a.movingS,
+  climb: (a) => a.elevationM,
+};
 
 const best = (list: Activity[], score: (a: Activity) => number) =>
   list.reduce<Activity | undefined>((top, a) => (top === undefined || score(a) > score(top) ? a : top), undefined);
 
-/** Longest and fastest efforts since `sinceKey`. Fastest needs a decent distance so a sprint doesn't count. */
+const candidates = (activities: Activity[], sinceKey: string, c: (typeof CATEGORIES)[number]) =>
+  activities.filter((a) => a.date >= sinceKey && a.sport === c.sport && a.distanceM >= c.minM && a.movingS > 0);
+
+/** Longest and fastest efforts since `sinceKey`. */
 export function records(activities: Activity[], sinceKey: string): BestEffort[] {
-  const recent = activities.filter((a) => a.date >= sinceKey);
-  const of = (sport: Sport, minM = 0) => recent.filter((a) => a.sport === sport && a.distanceM >= minM && a.movingS > 0);
-  const speed = (a: Activity) => a.distanceM / a.movingS;
-  const found: [string, Sport, Activity | undefined][] = [
-    ['Longest swim', 'swim', best(of('swim'), (a) => a.distanceM)],
-    ['Fastest swim pace (1 km+)', 'swim', best(of('swim', 1000), speed)],
-    ['Longest ride', 'bike', best(of('bike'), (a) => a.distanceM)],
-    ['Fastest ride (20 km+)', 'bike', best(of('bike', 20000), speed)],
-    ['Most climbing', 'bike', best(of('bike'), (a) => a.elevationM)],
-    ['Longest run', 'run', best(of('run'), (a) => a.distanceM)],
-    ['Fastest run pace (5 km+)', 'run', best(of('run', 5000), speed)],
-  ];
-  return found.filter((f): f is [string, Sport, Activity] => f[2] !== undefined).map(([label, sport, activity]) => ({ label, sport, activity }));
+  const out: BestEffort[] = [];
+  for (const c of CATEGORIES) {
+    const top = best(candidates(activities, sinceKey, c), SCORES[c.measure]);
+    if (top) out.push({ label: c.label, sport: c.sport, measure: c.measure, activity: top });
+  }
+  return out;
+}
+
+export interface NewBest extends BestEffort {
+  /** The best effort of this kind before this one. */
+  previous: Activity;
+}
+
+/**
+ * Best efforts set in the last `withinDays` days (today counts) that beat an earlier one. The first effort of a kind
+ * isn't a new best, it's where the record starts.
+ */
+export function newBests(activities: Activity[], sinceKey: string, todayKey: string, withinDays = 2): NewBest[] {
+  const from = toKey(addDays(fromKey(todayKey), -withinDays));
+  const out: NewBest[] = [];
+  for (const c of CATEGORIES) {
+    const score = SCORES[c.measure];
+    const pool = candidates(activities, sinceKey, c).filter((a) => a.date <= todayKey);
+    const top = best(pool, score);
+    if (!top || top.date < from) continue;
+    const previous = best(
+      pool.filter((a) => a.id !== top.id && a.start < top.start),
+      score,
+    );
+    if (previous && score(top) > score(previous)) out.push({ label: c.label, sport: c.sport, measure: c.measure, activity: top, previous });
+  }
+  return out;
+}
+
+export interface WaterSwims {
+  count: number;
+  metres: number;
+  seconds: number;
+}
+
+/** Swims since `sinceKey`, added up separately for the pool and open water. */
+export function swimsByWater(activities: Activity[], sinceKey: string): { pool: WaterSwims; open: WaterSwims } {
+  const out = { pool: { count: 0, metres: 0, seconds: 0 }, open: { count: 0, metres: 0, seconds: 0 } };
+  for (const a of activities) {
+    if (a.sport !== 'swim' || a.date < sinceKey || a.distanceM <= 0 || a.movingS <= 0) continue;
+    const t = a.openWater ? out.open : out.pool;
+    t.count += 1;
+    t.metres += a.distanceM;
+    t.seconds += a.movingS;
+  }
+  return out;
 }
 
 /** The highest heart rate the watch has seen, a floor for the max heart rate setting. */
