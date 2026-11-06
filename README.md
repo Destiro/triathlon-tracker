@@ -20,6 +20,17 @@ and kept here as the same number in metres.
 - **Plan**: a month calendar. Each day has a dot per workout in its sport's colour, solid once done. Each week
   shows its planned hours, and finished weeks fade. Tap a day to see its workouts underneath, or open it to move a
   workout or see what the watch recorded.
+- **Heart rate zones**: each recorded workout shows its time in five zones. Strava's own zones are for subscribers
+  only, so the app reads the heart rate stream and works zones out from your max heart rate (Settings): zone 1 is
+  under 60% of max, then 70%, 80% and 90%. Workouts that ask for one effort all the way through (foundation, long,
+  recovery and brick sessions) are checked against it: "moderate aerobic" is zones 2 to 3, "low aerobic" 1 to 2,
+  "recovery" 1, and 70% of the time in range counts as on target. Intervals are not checked. To change what the
+  plan's words mean, edit `INTENSITY_ZONES` in `src/zones.ts`; the zone boundaries are `ZONE_STARTS`. The
+  stream is one Strava request per workout, so each sync fetches the newest 15 and the rest follow later.
+- **Pool or open water**: a swim with a GPS start is open water, one without is a pool. Tap the tag on a swim to
+  correct it. Stats compares the pace of each.
+- **Personal bests**: a card on Today when a workout in the last two days beat your previous best, for example
+  longest ride or fastest 5 km.
 - **Editing the plan**: on a day, move a workout to another day, or put it back. Add your own sessions, such as
   gym, once or every week until the race. Your changes are saved apart from the plan, so the plan itself is
   never altered. The watch ticks a moved workout off on its new day. Strength activities from Strava (weight
@@ -79,6 +90,7 @@ Tokens are kept in the phone's secure storage.
 
 - `src/app/` – screens (Expo Router): `(tabs)/` for Today, Plan, Stats and Settings, `day/[date]` for one day
 - `src/plan/` – the plan as data, and `schedule.ts`, which lays it on the calendar and fits race week to the race date
+- `src/zones.ts` – heart rate zones, and how the plan's effort words map to them
 - `src/matching.ts` – pairs planned workouts with what the watch recorded
 - `src/stats.ts` – weekly volume, compliance, training load, efficiency and best efforts
 - `src/activities.ts`, `src/strava.ts` – turning Strava activities into the app's own, sign-in and syncing

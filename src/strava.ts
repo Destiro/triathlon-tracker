@@ -2,6 +2,7 @@ import * as Linking from 'expo-linking';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import { Activity, toActivity } from './activities';
+import { histogramFromResponse } from './zones';
 
 /** The Cloudflare Worker in worker/. The address isn't secret; the Strava client secret lives only on Cloudflare. */
 export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://triathlon-tracker-api.connordebruyn234.workers.dev';
@@ -122,4 +123,20 @@ export async function fetchActivitiesSince(tokens: StravaTokens, afterEpochS: nu
     }
     if (list.length < PAGE_SIZE) return activities;
   }
+}
+
+/**
+ * Seconds spent at each heart rate during one activity, from Strava's streams. Null when the activity has no heart
+ * rate there (or can't be read), so it isn't asked for again. Throws when Strava is limiting requests or the sign-in
+ * has run out, so the caller can stop and try again on the next sync.
+ */
+export async function fetchHeartRateHistogram(tokens: StravaTokens, activityId: number): Promise<Record<number, number> | null> {
+  const fresh = await freshTokens(tokens);
+  const url = `${STRAVA_API}/activities/${activityId}/streams?keys=time,heartrate&key_by_type=true`;
+  const response = await fetchWithTimeout(url, { headers: { Authorization: `Bearer ${fresh.accessToken}` } });
+  if (response.status === 401) throw new StravaError('Strava sign-in has expired. Connect again in Settings.');
+  if (response.status === 429) throw new StravaError('Strava is limiting requests. Try again in 15 minutes.');
+  if (response.status === 404 || response.status === 403) return null;
+  if (!response.ok) throw new StravaError('Strava is unavailable right now.');
+  return histogramFromResponse(await response.json().catch(() => null));
 }

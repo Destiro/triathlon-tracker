@@ -9,11 +9,13 @@ import {
   StravaTokens,
   connect,
   fetchActivitiesSince,
+  fetchHeartRateHistogram,
   forgetTokens,
   loadTokens,
   parseConnectParams,
   saveTokens,
 } from './strava';
+import { wantsZones } from './zones';
 
 export interface Settings {
   /** The Monday that plan week 1 starts on. */
@@ -36,6 +38,8 @@ const DEFAULT_SETTINGS: Settings = {
 const STORAGE_KEY = 'triathlon-tracker/v1';
 // Look back a little on every sync so edits to recent activities come through.
 const OVERLAP_DAYS = 3;
+// How many workouts get their heart rate breakdown fetched in one sync.
+const ZONES_PER_SYNC = 15;
 
 interface Saved {
   settings: Settings;
@@ -43,6 +47,8 @@ interface Saved {
   lastSync: number | null;
   athlete: string;
   edits: PlanEdits;
+  /** Swims you have corrected to pool (false) or open water (true), by activity id. */
+  waterOverrides?: Record<string, boolean>;
 }
 
 interface Store {
@@ -54,6 +60,8 @@ interface Store {
   /** Move a plan workout to another day. `plannedDate` is the day the plan has it on, so moving it back clears the change. */
   moveWorkout: (id: string, to: string, plannedDate: string) => void;
   addSession: (input: NewSession) => void;
+  /** Correct a swim that was called the wrong thing: pool (false) or open water (true). */
+  setOpenWater: (activityId: number, open: boolean) => void;
   removeSession: (sessionId: string, scope: 'one' | 'later') => void;
   activities: Activity[];
   activitiesByDate: Map<string, Activity[]>;
@@ -75,7 +83,9 @@ const StoreContext = createContext<Store | null>(null);
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
-  const [activities, setActivities] = useState<Activity[]>([]);
+  // As saved from Strava. `activities` below is the same with your pool / open water corrections applied.
+  const [stored, setStored] = useState<Activity[]>([]);
+  const [waterOverrides, setWaterOverrides] = useState<Record<string, boolean>>({});
   const [lastSync, setLastSync] = useState<number | null>(null);
   const [athlete, setAthlete] = useState('');
   const [edits, setEdits] = useState<PlanEdits>(NO_EDITS);
@@ -91,7 +101,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (raw) {
           const saved = JSON.parse(raw) as Partial<Saved>;
           setSettings({ ...DEFAULT_SETTINGS, ...saved.settings });
-          setActivities(saved.activities ?? []);
+          setStored(saved.activities ?? []);
+          setWaterOverrides(saved.waterOverrides ?? {});
           setLastSync(saved.lastSync ?? null);
           setAthlete(saved.athlete ?? '');
           setEdits({ ...NO_EDITS, ...saved.edits });
@@ -106,9 +117,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!ready) return;
-    const saved: Saved = { settings, activities, lastSync, athlete, edits };
+    const saved: Saved = { settings, activities: stored, lastSync, athlete, edits, waterOverrides };
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(saved)).catch(() => {});
-  }, [ready, settings, activities, lastSync, athlete, edits]);
+  }, [ready, settings, stored, lastSync, athlete, edits, waterOverrides]);
 
   const schedule = useMemo(
     () => applyEdits(buildSchedule(settings.planStart, settings.raceDate, settings.raceName), edits),
@@ -121,9 +132,36 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [settings.raceDate],
   );
   const removeSessionById = useCallback((sessionId: string, scope: 'one' | 'later') => setEdits((e) => removeSession(e, sessionId, scope)), []);
+  const activities = useMemo(
+    () => stored.map((a) => (a.sport === 'swim' && waterOverrides[a.id] !== undefined ? { ...a, openWater: waterOverrides[a.id] } : a)),
+    [stored, waterOverrides],
+  );
   const activitiesByDate = useMemo(() => byDate(activities), [activities]);
+  const setOpenWater = useCallback((id: number, open: boolean) => setWaterOverrides((o) => ({ ...o, [id]: open })), []);
 
   const updateSettings = useCallback((patch: Partial<Settings>) => setSettings((s) => ({ ...s, ...patch })), []);
+
+  // Strava's heart rate zones are for subscribers only, so zones are worked out from the heart rate stream. That is one
+  // request per activity and Strava allows 100 reads every 15 minutes, so each sync gets the newest few and stops
+  // quietly if Strava says to slow down; the rest follow on later syncs.
+  const zoneBudget = useRef(0);
+  const fetchingZones = useRef(false);
+  useEffect(() => {
+    if (!tokens || fetchingZones.current || zoneBudget.current <= 0) return;
+    const next = stored.find(wantsZones); // newest first
+    if (!next) return;
+    fetchingZones.current = true;
+    zoneBudget.current -= 1;
+    fetchHeartRateHistogram(tokens, next.id)
+      .then((hr) => {
+        fetchingZones.current = false;
+        setStored((saved) => saved.map((x) => (x.id === next.id ? { ...x, hr: hr ?? {} } : x)));
+      })
+      .catch(() => {
+        fetchingZones.current = false;
+        zoneBudget.current = 0;
+      });
+  }, [tokens, stored]);
 
   const runSync = useCallback(
     async (current: StravaTokens) => {
@@ -136,7 +174,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           ? Math.floor(lastSync / 1000) - OVERLAP_DAYS * 86400
           : addDays(fromKey(settings.planStart), -7).getTime() / 1000;
         const incoming = await fetchActivitiesSince(current, since);
-        setActivities((saved) => mergeActivities(saved, incoming));
+        setStored((saved) => mergeActivities(saved, incoming));
+        zoneBudget.current = ZONES_PER_SYNC;
         setLastSync(Date.now());
         setSyncError(null);
         // Tokens may have been renewed during the sync.
@@ -202,7 +241,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     await forgetTokens();
     setTokens(null);
     setAthlete('');
-    setActivities([]);
+    setStored([]);
     setLastSync(null);
     setSyncError(null);
   }, []);
@@ -215,6 +254,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     moveWorkout,
     addSession,
     removeSession: removeSessionById,
+    setOpenWater,
     activities,
     activitiesByDate,
     connected: tokens !== null,

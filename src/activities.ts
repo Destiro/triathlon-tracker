@@ -20,6 +20,10 @@ export interface Activity {
   /** Metres per second. */
   avgSpeed: number;
   avgCadence?: number;
+  /** Swims only: recorded with a GPS start, so swum outdoors. A pool swim has none. You can correct it by hand. */
+  openWater?: boolean;
+  /** Seconds spent at each heart rate, by beats per minute. Empty when Strava had nothing. Filled in after sync. */
+  hr?: Record<number, number>;
 }
 
 const SPORTS: Record<string, Discipline> = {
@@ -66,13 +70,20 @@ export function toActivity(raw: Record<string, unknown>): Activity | null {
     maxHr: hasHr ? num(raw.max_heartrate) : undefined,
     avgSpeed: num(raw.average_speed) ?? (movingS > 0 ? distanceM / movingS : 0),
     avgCadence: num(raw.average_cadence),
+    ...(SPORTS[type] === 'swim' ? { openWater: Array.isArray(raw.start_latlng) && raw.start_latlng.length === 2 } : {}),
   };
 }
 
-/** Adds new activities to the saved ones, replacing any with the same id, newest first. */
+/**
+ * Adds new activities to the saved ones, replacing any with the same id, newest first. A fresh copy from Strava has
+ * no heart rate breakdown, so the one already saved is kept rather than fetched again.
+ */
 export function mergeActivities(saved: Activity[], incoming: Activity[]): Activity[] {
   const byId = new Map(saved.map((a) => [a.id, a]));
-  for (const a of incoming) byId.set(a.id, a);
+  for (const a of incoming) {
+    const hr = byId.get(a.id)?.hr;
+    byId.set(a.id, hr && !a.hr ? { ...a, hr } : a);
+  }
   return [...byId.values()].sort((a, b) => b.start.localeCompare(a.start));
 }
 

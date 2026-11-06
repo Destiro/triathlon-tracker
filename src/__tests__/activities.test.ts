@@ -54,3 +54,25 @@ describe('mergeActivities and byDate', () => {
     expect(byDate([b, early]).get('2026-10-21')?.map((x) => x.id)).toEqual([3, 2]);
   });
 });
+
+describe('open water and heart rate on activities', () => {
+  const swim = { id: 7, name: 'Swim', sport_type: 'Swim', start_date_local: '2026-11-01T07:00:00Z', distance: 1400, moving_time: 2100 };
+
+  it('calls a swim with a GPS start open water, and one without a pool swim', () => {
+    expect(toActivity({ ...swim, start_latlng: [-36.8, 174.7] })?.openWater).toBe(true);
+    expect(toActivity({ ...swim, start_latlng: [] })?.openWater).toBe(false);
+    expect(toActivity({ ...swim, start_latlng: null })?.openWater).toBe(false);
+    expect(toActivity(swim)?.openWater).toBe(false);
+  });
+
+  it('leaves the flag off rides and runs', () => {
+    expect(toActivity({ ...swim, sport_type: 'Run', start_latlng: [1, 2] })?.openWater).toBeUndefined();
+  });
+
+  it('keeps the heart rate breakdown already saved when a fresh copy comes from Strava', () => {
+    const saved = activity({ id: 1, sport: 'run', date: '2026-10-20', hr: { 140: 600 } });
+    const fresh = activity({ id: 1, sport: 'run', date: '2026-10-20', name: 'Renamed' });
+    const merged = mergeActivities([saved], [fresh]);
+    expect(merged[0]).toMatchObject({ name: 'Renamed', hr: { 140: 600 } });
+  });
+});

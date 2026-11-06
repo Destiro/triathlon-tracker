@@ -2,12 +2,13 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BarChart, LineChart } from '../../components/charts';
+import { bestValue } from '../../bests';
 import { colorOf, SPORT_LABELS, SportBadge, tintOf } from '../../components/sport';
 import { Card, Empty } from '../../components/ui';
 import { addDays, fromKey, toKey } from '../../dates';
-import { formatClock, formatDistance, formatMinutes, formatRunPace, formatSpeed, formatSwimPace } from '../../format';
+import { formatClock, formatDistance, formatMinutes, formatSwimPace } from '../../format';
 import { TOTAL_WEEKS } from '../../plan/schedule';
-import { efficiency, highestHeartRate, loadSeries, records, SPORTS, totals, unitOf, weekVolume } from '../../stats';
+import { efficiency, highestHeartRate, loadSeries, records, SPORTS, swimsByWater, totals, unitOf, weekVolume } from '../../stats';
 import { useStore, useTodayKey } from '../../store';
 import { colors, spacing, type } from '../../theme';
 
@@ -46,6 +47,7 @@ export default function StatsScreen() {
   const bikeEff = efficiency(activities, 'bike');
   const sinceStart = totals(activities, settings.planStart);
   const best = records(activities, settings.planStart);
+  const water = swimsByWater(activities, settings.planStart);
 
   const formState =
     now.form > 5 ? 'Fresh: well rested.' : now.form > -10 ? 'Balanced: absorbing the training.' : now.form > -25 ? 'Tired: normal in a hard block.' : 'Very tired: watch for overreaching.';
@@ -142,6 +144,27 @@ export default function StatsScreen() {
           })}
         </Card>
 
+        {water.pool.count + water.open.count > 0 && (
+          <Card title="Pool and open water" note="Swims with a GPS start count as open water. Tap a swim on its day to change it.">
+            {([
+              ['Pool', water.pool],
+              ['Open water', water.open],
+            ] as const).map(([label, t]) => (
+              <View key={label} style={styles.totalRow}>
+                <SportBadge kind="swim" size={28} />
+                <View style={{ flex: 1 }}>
+                  <Text style={type.body}>
+                    {label} · {t.count} {t.count === 1 ? 'swim' : 'swims'}
+                  </Text>
+                  <Text style={type.small}>
+                    {t.count ? `${formatSwimPace(t.metres / t.seconds)} · ${formatDistance(t.metres, true)}` : 'None yet'}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </Card>
+        )}
+
         {best.length > 0 && (
           <Card>
             <Text style={type.heading}>Best efforts</Text>
@@ -151,12 +174,7 @@ export default function StatsScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={type.body}>{b.label}</Text>
                   <Text style={type.small}>
-                    {b.label.includes('pace') || b.label.startsWith('Fastest')
-                      ? `${b.sport === 'swim' ? formatSwimPace(b.activity.avgSpeed) : b.sport === 'run' ? formatRunPace(b.activity.avgSpeed) : formatSpeed(b.activity.avgSpeed)} · `
-                      : b.label === 'Most climbing'
-                        ? `${Math.round(b.activity.elevationM)} m · `
-                        : `${formatDistance(b.activity.distanceM, b.sport === 'swim')} · `}
-                    {formatClock(b.activity.movingS)} · {shortDate(b.activity.date)}
+                    {bestValue(b)} · {formatClock(b.activity.movingS)} · {shortDate(b.activity.date)}
                   </Text>
                 </View>
               </View>

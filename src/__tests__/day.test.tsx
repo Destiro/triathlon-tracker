@@ -22,8 +22,11 @@ jest.mock('../store', () => {
   const base = buildSchedule('2026-10-19', '2027-03-05', 'Ironman 70.3 New Zealand');
   const edits = addSessions(NO_EDITS, { date: '2026-11-05', title: 'Legs', minutes: 45, repeatWeekly: true }, '2027-03-05', () => Math.random().toString(36).slice(2));
   const store = {
+    settings: { maxHr: 190, restHr: 55 },
     schedule: applyEdits(base, edits),
+    activities: [],
     activitiesByDate: new Map(),
+    setOpenWater: jest.fn(),
     moveWorkout: jest.fn(),
     addSession: jest.fn(),
     removeSession: jest.fn(),
