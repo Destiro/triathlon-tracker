@@ -14,8 +14,9 @@ and kept here as the same number in metres.
 
 ## What it does
 
-- **Today**: days to the race, today's workouts with their warm-up, main set and cool-down, whether each is
-  done, a week strip, and this week's swim, bike and run against the plan.
+- **Today**: days to the race, then every workout for the day at once, each with its warm-up, main set and
+  cool-down, whether it is done, what the watch recorded, and a row to move it. On a rest day it points to the next
+  workout. Below that, a week strip and this week's swim, bike and run against the plan.
 - **Plan**: a month calendar. Each day has a dot per workout in its sport's colour, solid once done. Each week
   shows its planned hours, and finished weeks fade. Tap a day to see its workouts underneath, or open it to move a
   workout or see what the watch recorded.
