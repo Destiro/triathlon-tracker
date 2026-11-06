@@ -1,6 +1,6 @@
 import { Activity } from './activities';
 import { addDays, fromKey, toKey } from './dates';
-import { DayResult, matchDay, statusScore } from './matching';
+import { DayResult, matchDay, statusScore, WorkoutResult } from './matching';
 import { daysOfWeek, Schedule } from './plan/schedule';
 import { Sport } from './plan/types';
 
@@ -71,6 +71,31 @@ export function weekCompliance(
 
 export function dayResult(schedule: Schedule, activitiesByDate: Map<string, Activity[]>, dateKey: string, todayKey: string): DayResult {
   return matchDay(schedule.get(dateKey), activitiesByDate.get(dateKey) ?? [], todayKey);
+}
+
+export interface UpNext {
+  date: string;
+  /** Which of that day's workouts, in plan order. */
+  index: number;
+  result: WorkoutResult;
+}
+
+/**
+ * The workout to show first on Today: the first one today that the watch hasn't recorded yet, otherwise the
+ * first one on the next day that has any. Null once the plan is over.
+ */
+export function upNext(schedule: Schedule, activitiesByDate: Map<string, Activity[]>, todayKey: string): UpNext | null {
+  const today = dayResult(schedule, activitiesByDate, todayKey, todayKey);
+  const open = today.results.findIndex((r) => r.status === 'today');
+  if (open >= 0) return { date: todayKey, index: open, result: today.results[open] };
+
+  const last = [...schedule.keys()].reduce((a, b) => (a > b ? a : b), todayKey);
+  for (let d = addDays(fromKey(todayKey), 1); toKey(d) <= last; d = addDays(d, 1)) {
+    const key = toKey(d);
+    const r = dayResult(schedule, activitiesByDate, key, todayKey);
+    if (r.results.length > 0) return { date: key, index: 0, result: r.results[0] };
+  }
+  return null;
 }
 
 // ---- Training load ----

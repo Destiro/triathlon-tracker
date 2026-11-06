@@ -13,7 +13,7 @@ const STATUS: Record<Status, { icon: string; color: string; label: string }> = {
   partial: { icon: 'check-circle-outline', color: colors.warning, label: 'Partly done' },
   missed: { icon: 'close-circle-outline', color: colors.danger, label: 'Missed' },
   today: { icon: 'clock-outline', color: colors.inkSoft, label: 'Today' },
-  upcoming: { icon: 'circle-outline', color: colors.line, label: 'Planned' },
+  upcoming: { icon: 'circle-outline', color: colors.inkFaint, label: 'Planned' },
 };
 
 /** "1,300 m", "1 h 15", or the legs of a brick or race. */

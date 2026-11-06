@@ -12,7 +12,7 @@ import { useStore, useTodayKey } from '../../store';
 import { colors, spacing, type } from '../../theme';
 
 const CURVE_DAYS = 120;
-const FATIGUE_COLOR = '#8B5CF6';
+const FATIGUE_COLOR = '#A78BFA';
 
 const shortDate = (key: string) => fromKey(key).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 
