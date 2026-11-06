@@ -5,9 +5,10 @@ import { Activity } from '../activities';
 import { fromKey } from '../dates';
 import { formatClock, formatDistance, formatMinutes } from '../format';
 import { Status, WorkoutResult } from '../matching';
+import { stepBlocks } from '../plan/steps';
 import { PlannedWorkout } from '../plan/types';
 import { colors, radius, spacing, type } from '../theme';
-import { colorOf, SPORT_LABELS, SportBadge } from './sport';
+import { colorOf, SPORT_LABELS, SportBadge, tintOf } from './sport';
 
 export const STATUS: Record<Status, { icon: string; color: string; label: string }> = {
   done: { icon: 'check-circle', color: colors.accent, label: 'Done' },
@@ -46,6 +47,8 @@ interface Props {
 export function WorkoutCard({ result, detailed, actions }: Props) {
   const { workout, status, activities } = result;
   const s = STATUS[status];
+  const blocks = detailed ? stepBlocks(workout) : null;
+  const unit = workout.kind === 'swim' ? '' : ' min';
   return (
     <View style={[styles.card, { borderLeftColor: colorOf(workout.kind) }]}>
       <View style={styles.row}>
@@ -74,6 +77,18 @@ export function WorkoutCard({ result, detailed, actions }: Props) {
 
       {detailed && (
         <View style={styles.steps}>
+          {blocks && (
+            <View style={styles.bar}>
+              {blocks.map((b) => (
+                <View key={b.label} style={[styles.block, { flex: b.amount, backgroundColor: b.label === 'Main' ? colorOf(workout.kind) : tintOf(workout.kind) }]}>
+                  <Text style={[styles.blockText, b.label === 'Main' && { color: colors.onAccent }]} numberOfLines={1}>
+                    {b.label} {b.amount}
+                    {unit}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
           {workout.steps.map((line, i) => (
             <Text key={i} style={styles.step}>
               {line}
@@ -122,5 +137,8 @@ const styles = StyleSheet.create({
   status: { width: 28, alignItems: 'center' },
   done: { fontSize: 13, color: colors.accent, fontWeight: '600' },
   steps: { gap: 4, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, paddingTop: spacing.sm },
+  bar: { flexDirection: 'row', gap: 3, height: 24, borderRadius: radius.sm - 2, overflow: 'hidden', marginBottom: spacing.xs },
+  block: { justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 },
+  blockText: { fontSize: 11, fontWeight: '800', color: colors.ink },
   step: { fontSize: 14, color: colors.ink, lineHeight: 20 },
 });

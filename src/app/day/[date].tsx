@@ -1,58 +1,22 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AddSessionSheet, MoveSheet } from '../../components/PlanSheets';
-import { Card, Empty } from '../../components/ui';
-import { CardAction, doneSummary, WorkoutCard } from '../../components/WorkoutCard';
-import { SportBadge } from '../../components/sport';
+import { DayWorkouts } from '../../components/DayWorkouts';
+import { AddSessionSheet } from '../../components/PlanSheets';
+import { Empty } from '../../components/ui';
 import { formatDay, fromKey, isDateKey } from '../../dates';
-import { formatRunPace, formatSpeed, formatSwimPace } from '../../format';
-import { sessionIdOf } from '../../plan/edits';
 import { PHASE_LABELS } from '../../plan/schedule';
-import { PlannedWorkout } from '../../plan/types';
-import { dayResult } from '../../stats';
-import { useStore, useTodayKey } from '../../store';
+import { useStore } from '../../store';
 import { colors, spacing, type } from '../../theme';
 
 export default function DayScreen() {
   const { date } = useLocalSearchParams<{ date: string }>();
-  const { schedule, activitiesByDate, moveWorkout, addSession, removeSession } = useStore();
-  const [moving, setMoving] = useState<PlannedWorkout | null>(null);
+  const { schedule, addSession } = useStore();
   const [adding, setAdding] = useState(false);
-  const todayKey = useTodayKey();
   const valid = typeof date === 'string' && isDateKey(date);
   const day = valid ? schedule.get(date) : undefined;
-  const result = valid ? dayResult(schedule, activitiesByDate, date, todayKey) : { results: [], extras: [] };
-
-  const askRemove = (w: PlannedWorkout) => {
-    const id = sessionIdOf(w.id ?? '');
-    if (!w.repeats) {
-      Alert.alert('Remove this session?', w.title, [
-        { text: 'Keep it', style: 'cancel' },
-        { text: 'Remove', style: 'destructive', onPress: () => removeSession(id, 'one') },
-      ]);
-      return;
-    }
-    Alert.alert('Remove this session?', `${w.title} repeats every week.`, [
-      { text: 'Keep it', style: 'cancel' },
-      { text: 'Just this one', onPress: () => removeSession(id, 'one') },
-      { text: 'This and later weeks', style: 'destructive', onPress: () => removeSession(id, 'later') },
-    ]);
-  };
-
-  /** What can be done to a workout, as rows along the bottom of its card. A finished workout stays where it is. */
-  const actionsFor = (w: PlannedWorkout, done: boolean): CardAction[] => {
-    const actions: CardAction[] = [];
-    if (w.id && w.kind !== 'race' && !done) actions.push({ label: 'Move to another day', icon: 'calendar-arrow-right', onPress: () => setMoving(w) });
-    if (w.movedFrom) {
-      const planned = fromKey(w.movedFrom).toLocaleDateString(undefined, { weekday: 'long' });
-      actions.push({ label: `Put back on ${planned}`, icon: 'undo', onPress: () => moveWorkout(w.id!, w.movedFrom!, w.movedFrom!) });
-    }
-    if (w.custom) actions.push({ label: 'Remove', icon: 'trash-can-outline', danger: true, onPress: () => askRemove(w) });
-    return actions;
-  };
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -77,66 +41,9 @@ export default function DayScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.list}>
-        {!day ? (
-          <Empty text="This day is outside the plan." />
-        ) : result.results.length === 0 ? (
-          <Card>
-            <Text style={type.body}>Rest day. Recovery is part of the plan.</Text>
-          </Card>
-        ) : (
-          result.results.map((r, i) => (
-            <View key={i} style={{ gap: spacing.sm }}>
-              <WorkoutCard result={r} detailed actions={actionsFor(r.workout, r.status === 'done')} />
-              {r.activities.map((a) => (
-                <Card key={a.id}>
-                  <Text style={type.heading}>{a.name}</Text>
-                  <Text style={type.small}>{doneSummary(a)}</Text>
-                  <Text style={type.small}>
-                    {[
-                      a.sport === 'run' ? formatRunPace(a.avgSpeed) : a.sport === 'swim' ? formatSwimPace(a.avgSpeed) : a.sport === 'bike' ? formatSpeed(a.avgSpeed) : '',
-                      a.avgHr ? `${Math.round(a.avgHr)} bpm average` : '',
-                      a.elevationM >= 10 ? `${Math.round(a.elevationM)} m climbing` : '',
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </Text>
-                </Card>
-              ))}
-            </View>
-          ))
-        )}
-
-        {result.extras.length > 0 && (
-          <>
-            <Text style={type.heading}>Not in the plan</Text>
-            {result.extras.map((a) => (
-              <Card key={a.id}>
-                <View style={styles.extra}>
-                  <SportBadge kind={a.sport} size={32} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={type.body}>{a.name}</Text>
-                    <Text style={type.small}>{doneSummary(a)}</Text>
-                  </View>
-                </View>
-              </Card>
-            ))}
-          </>
-        )}
+        {valid && day ? <DayWorkouts date={date} /> : <Empty text="This day is outside the plan." />}
       </ScrollView>
 
-      {moving && (
-        <MoveSheet
-          visible
-          workoutTitle={moving.title}
-          schedule={schedule}
-          currentDate={date}
-          onClose={() => setMoving(null)}
-          onMove={(to) => {
-            moveWorkout(moving.id!, to, moving.movedFrom ?? date);
-            setMoving(null);
-          }}
-        />
-      )}
       {adding && valid && (
         <AddSessionSheet
           visible
@@ -157,5 +64,4 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, padding: spacing.lg, paddingBottom: spacing.sm },
   list: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.md },
-  extra: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
 });

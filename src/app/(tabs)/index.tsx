@@ -3,26 +3,23 @@ import React from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ring } from '../../components/charts';
+import { DayWorkouts } from '../../components/DayWorkouts';
 import { colorOf, SPORT_LABELS, tintOf } from '../../components/sport';
 import { Button, Card, Empty } from '../../components/ui';
 import { WeekStrip } from '../../components/WeekStrip';
-import { plannedAmount, WorkoutCard } from '../../components/WorkoutCard';
-import { addDays, daysBetween, formatDay, fromKey, toKey } from '../../dates';
+import { plannedAmount } from '../../components/WorkoutCard';
+import { daysBetween, formatDay, fromKey } from '../../dates';
 import { formatAgo, formatMinutes } from '../../format';
 import { daysOfWeek, PHASE_LABELS, TOTAL_WEEKS } from '../../plan/schedule';
-import { stepBlocks } from '../../plan/steps';
-import { dayResult, SPORTS, unitOf, UpNext, upNext, weekCompliance, weekGym, weekVolume } from '../../stats';
+import { SPORTS, unitOf, upNext, weekCompliance, weekGym, weekVolume } from '../../stats';
 import { useStore, useTodayKey } from '../../store';
 import { colors, radius, spacing, type } from '../../theme';
-
-const openDay = (date: string) => router.push({ pathname: '/day/[date]', params: { date } });
 
 export default function TodayScreen() {
   const { settings, schedule, activitiesByDate, connected, syncing, sync, lastSync, syncError, connectStrava } = useStore();
   const todayKey = useTodayKey();
   const today = schedule.get(todayKey);
   const daysToRace = daysBetween(fromKey(todayKey), fromKey(settings.raceDate));
-  const result = dayResult(schedule, activitiesByDate, todayKey, todayKey);
   const next = upNext(schedule, activitiesByDate, todayKey);
 
   const week = today?.week ?? (todayKey < settings.planStart ? 1 : TOTAL_WEEKS);
@@ -30,13 +27,6 @@ export default function TodayScreen() {
   const volume = weekVolume(schedule, activitiesByDate, week);
   const gym = weekGym(schedule, activitiesByDate, week);
   const doneCount = Math.round(compliance.score);
-
-  // Everything else on today's list: what's already in, then what's still to come after the one up next.
-  const others = result.results
-    .map((r, i) => ({ r, i }))
-    .filter(({ i }) => !(next?.date === todayKey && next.index === i));
-  const done = others.filter(({ r }) => r.status === 'done' || r.status === 'partial');
-  const later = others.filter(({ r }) => r.status === 'today');
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -78,37 +68,28 @@ export default function TodayScreen() {
           </Text>
         )}
 
-        {!today && todayKey < settings.planStart && <Empty text={`The plan starts on ${formatDay(fromKey(settings.planStart))}.`} />}
-        {today && result.results.length === 0 && (
-          <Card>
-            <Text style={type.body}>Rest day today. Recovery is part of the plan.</Text>
-          </Card>
+        {today ? (
+          <DayWorkouts date={todayKey} />
+        ) : (
+          <Empty text={todayKey < settings.planStart ? `The plan starts on ${formatDay(fromKey(settings.planStart))}.` : 'The plan has finished.'} />
         )}
 
-        {next ? <UpNextCard next={next} todayKey={todayKey} /> : today === undefined && todayKey > settings.planStart && <Empty text="The plan has finished." />}
-
-        {later.length > 0 && <Text style={type.heading}>Later today</Text>}
-        {later.map(({ r, i }) => (
-          <Pressable key={i} onPress={() => openDay(todayKey)}>
-            <WorkoutCard result={r} />
-          </Pressable>
-        ))}
-
-        {done.length > 0 && <Text style={type.heading}>Done today</Text>}
-        {done.map(({ r, i }) => (
-          <Pressable key={i} onPress={() => openDay(todayKey)}>
-            <WorkoutCard result={r} />
-          </Pressable>
-        ))}
-
-        {result.extras.length > 0 && (
-          <Card title="Also today" note="Recorded on your watch but not in the plan">
-            {result.extras.map((a) => (
-              <Text key={a.id} style={type.body}>
-                {a.name}
+        {/* Only when nothing is left today: a rest day, or everything is done. */}
+        {next && next.date !== todayKey && (
+          <Pressable
+            onPress={() => router.push({ pathname: '/day/[date]', params: { date: next.date } })}
+            style={[styles.next, { borderLeftColor: colorOf(next.result.workout.kind) }]}
+            accessibilityRole="button"
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={type.label}>Next · {fromKey(next.date).toLocaleDateString(undefined, { weekday: 'long' })}</Text>
+              <Text style={type.heading}>{next.result.workout.title}</Text>
+              <Text style={type.small}>
+                {SPORT_LABELS[next.result.workout.kind]}
+                {plannedAmount(next.result.workout) ? ` · ${plannedAmount(next.result.workout)}` : ''}
               </Text>
-            ))}
-          </Card>
+            </View>
+          </Pressable>
         )}
 
         {today && (
@@ -148,52 +129,6 @@ export default function TodayScreen() {
   );
 }
 
-/** The next workout, big and in its sport's colour, with its warm-up, main set and cool-down. */
-function UpNextCard({ next, todayKey }: { next: UpNext; todayKey: string }) {
-  const { workout } = next.result;
-  const blocks = stepBlocks(workout);
-  const when =
-    next.date === todayKey
-      ? 'Up next'
-      : next.date === toKey(addDays(fromKey(todayKey), 1))
-        ? 'Next · tomorrow'
-        : `Next · ${fromKey(next.date).toLocaleDateString(undefined, { weekday: 'long' })}`;
-  const unit = workout.kind === 'swim' ? '' : ' min';
-
-  return (
-    <Pressable onPress={() => openDay(next.date)} style={[styles.hero, { backgroundColor: tintOf(workout.kind), borderColor: colorOf(workout.kind) }]} accessibilityRole="button">
-      <View style={styles.between}>
-        <Text style={[styles.heroLabel, { color: colorOf(workout.kind) }]}>{when.toUpperCase()}</Text>
-        <Text style={[styles.heroLabel, { color: colorOf(workout.kind) }]}>{SPORT_LABELS[workout.kind].toUpperCase()}</Text>
-      </View>
-      <Text style={styles.heroTitle}>{workout.title}</Text>
-      <Text style={[styles.heroAmount, { color: colorOf(workout.kind) }]}>{plannedAmount(workout)}</Text>
-
-      {blocks && (
-        <View style={styles.bar}>
-          {blocks.map((b) => (
-            <View key={b.label} style={[styles.block, { flex: b.amount }, b.label === 'Main' && { backgroundColor: colorOf(workout.kind) }]}>
-              <Text style={[styles.blockText, b.label === 'Main' && { color: colors.onAccent }]} numberOfLines={1}>
-                {b.label} {b.amount}
-                {unit}
-              </Text>
-            </View>
-          ))}
-        </View>
-      )}
-
-      <View style={styles.steps}>
-        {workout.steps.map((line, i) => (
-          <Text key={i} style={styles.step}>
-            {line}
-          </Text>
-        ))}
-      </View>
-      <Text style={styles.heroNote}>Record it on your watch. It ticks off here once Strava has it.</Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   list: { padding: spacing.lg, gap: spacing.md },
@@ -202,16 +137,16 @@ const styles = StyleSheet.create({
   phase: { fontSize: 13, fontWeight: '600', color: colors.accent, flexShrink: 1 },
   countdown: { ...type.number, fontSize: 15 },
   between: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: spacing.sm },
-  hero: { borderRadius: radius.lg, borderWidth: 1.5, borderLeftWidth: 6, padding: spacing.lg, gap: spacing.sm },
-  heroLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 0.8 },
-  heroTitle: { fontSize: 24, fontWeight: '800', color: colors.ink },
-  heroAmount: { ...type.hero, fontSize: 36, lineHeight: 42 },
-  bar: { flexDirection: 'row', gap: 3, height: 26, borderRadius: radius.sm, overflow: 'hidden' },
-  block: { justifyContent: 'center', alignItems: 'center', backgroundColor: colors.surface, paddingHorizontal: 4 },
-  blockText: { fontSize: 11, fontWeight: '800', color: colors.ink },
-  steps: { gap: 3 },
-  step: { fontSize: 14, lineHeight: 20, color: colors.ink },
-  heroNote: { fontSize: 12, color: colors.inkSoft },
+  next: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderLeftWidth: 5,
+    padding: spacing.md,
+  },
   rings: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: spacing.xs },
   ring: { alignItems: 'center', gap: 2, flex: 1 },
   ringLabel: { fontSize: 13, fontWeight: '600', color: colors.ink },
