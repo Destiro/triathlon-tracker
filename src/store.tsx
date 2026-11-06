@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, byDate, mergeActivities } from './activities';
 import { addDays, fromKey, toKey } from './dates';
+import { addSessions, applyEdits, NewSession, NO_EDITS, PlanEdits, removeSession, setMove } from './plan/edits';
 import { buildSchedule, Schedule } from './plan/schedule';
 import {
   StravaError,
@@ -41,13 +42,19 @@ interface Saved {
   activities: Activity[];
   lastSync: number | null;
   athlete: string;
+  edits: PlanEdits;
 }
 
 interface Store {
   ready: boolean;
   settings: Settings;
   updateSettings: (patch: Partial<Settings>) => void;
+  /** The plan on the calendar with your moves and added sessions applied. */
   schedule: Schedule;
+  /** Move a plan workout to another day. `plannedDate` is the day the plan has it on, so moving it back clears the change. */
+  moveWorkout: (id: string, to: string, plannedDate: string) => void;
+  addSession: (input: NewSession) => void;
+  removeSession: (sessionId: string, scope: 'one' | 'later') => void;
   activities: Activity[];
   activitiesByDate: Map<string, Activity[]>;
   connected: boolean;
@@ -71,6 +78,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [lastSync, setLastSync] = useState<number | null>(null);
   const [athlete, setAthlete] = useState('');
+  const [edits, setEdits] = useState<PlanEdits>(NO_EDITS);
   const [tokens, setTokens] = useState<StravaTokens | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -86,6 +94,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           setActivities(saved.activities ?? []);
           setLastSync(saved.lastSync ?? null);
           setAthlete(saved.athlete ?? '');
+          setEdits({ ...NO_EDITS, ...saved.edits });
         }
         setTokens(await loadTokens());
       } catch {
@@ -97,14 +106,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!ready) return;
-    const saved: Saved = { settings, activities, lastSync, athlete };
+    const saved: Saved = { settings, activities, lastSync, athlete, edits };
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(saved)).catch(() => {});
-  }, [ready, settings, activities, lastSync, athlete]);
+  }, [ready, settings, activities, lastSync, athlete, edits]);
 
   const schedule = useMemo(
-    () => buildSchedule(settings.planStart, settings.raceDate, settings.raceName),
-    [settings.planStart, settings.raceDate, settings.raceName],
+    () => applyEdits(buildSchedule(settings.planStart, settings.raceDate, settings.raceName), edits),
+    [settings.planStart, settings.raceDate, settings.raceName, edits],
   );
+
+  const moveWorkout = useCallback((id: string, to: string, plannedDate: string) => setEdits((e) => setMove(e, id, to, plannedDate)), []);
+  const addSession = useCallback(
+    (input: NewSession) => setEdits((e) => addSessions(e, input, settings.raceDate, () => Math.random().toString(36).slice(2, 10))),
+    [settings.raceDate],
+  );
+  const removeSessionById = useCallback((sessionId: string, scope: 'one' | 'later') => setEdits((e) => removeSession(e, sessionId, scope)), []);
   const activitiesByDate = useMemo(() => byDate(activities), [activities]);
 
   const updateSettings = useCallback((patch: Partial<Settings>) => setSettings((s) => ({ ...s, ...patch })), []);
@@ -196,6 +212,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     settings,
     updateSettings,
     schedule,
+    moveWorkout,
+    addSession,
+    removeSession: removeSessionById,
     activities,
     activitiesByDate,
     connected: tokens !== null,

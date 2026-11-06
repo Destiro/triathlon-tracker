@@ -15,6 +15,10 @@ export type Schedule = Map<string, ScheduledDay>;
 
 const RACE_WEEK = PLAN.length;
 
+/** Gives each workout an id from its place in the plan, so edits keep pointing at it wherever it lands. */
+const tagged = (week: number, day: number, workouts: PlannedWorkout[]): PlannedWorkout[] =>
+  workouts.map((w, i) => ({ ...w, id: `${week}.${day}.${i}` }));
+
 /**
  * Lays the plan out on the calendar. Weeks 1 to 19 run Monday to Sunday from `startKey` (a Monday). Race week is
  * counted back from the actual race day instead, so the race lands on the right day even when it isn't a Sunday;
@@ -32,7 +36,7 @@ export function buildSchedule(startKey: string, raceKey: string, raceName: strin
       const date = addDays(start, (week.week - 1) * 7 + i);
       if (date >= raceWeekStart) return;
       const key = toKey(date);
-      schedule.set(key, { date: key, week: week.week, phase: week.phase, recovery: week.recovery, workouts });
+      schedule.set(key, { date: key, week: week.week, phase: week.phase, recovery: week.recovery, workouts: tagged(week.week, i, workouts) });
     });
   }
 
@@ -40,7 +44,7 @@ export function buildSchedule(startKey: string, raceKey: string, raceName: strin
   raceWeek.days.forEach((workouts, i) => {
     const key = toKey(addDays(raceWeekStart, i));
     const named = workouts.map((w) => (w.kind === 'race' && raceName ? { ...w, title: raceName } : w));
-    schedule.set(key, { date: key, week: RACE_WEEK, phase: 'race', recovery: false, workouts: named });
+    schedule.set(key, { date: key, week: RACE_WEEK, phase: 'race', recovery: false, workouts: tagged(RACE_WEEK, i, named) });
   });
 
   return schedule;

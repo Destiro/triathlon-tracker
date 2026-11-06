@@ -30,6 +30,7 @@ export const sportColors: Record<WorkoutKind | 'other', string> = {
   run: '#4ADE80',
   brick: '#FB923C',
   race: '#F87171',
+  gym: '#C084FC',
   other: '#94A3B8',
 };
 
@@ -40,6 +41,7 @@ export const sportTints: Record<WorkoutKind | 'other', string> = {
   run: '#0F3020',
   brick: '#36200D',
   race: '#3A1616',
+  gym: '#2E1F42',
   other: '#1C2433',
 };
 
@@ -50,7 +52,8 @@ export const sportIcons: Record<WorkoutKind | 'other', string> = {
   run: 'run',
   brick: 'lightning-bolt',
   race: 'flag-checkered',
-  other: 'dumbbell',
+  gym: 'dumbbell',
+  other: 'help-circle-outline',
 };
 
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 };

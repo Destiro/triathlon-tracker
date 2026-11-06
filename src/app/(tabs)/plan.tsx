@@ -1,17 +1,20 @@
 import { router } from 'expo-router';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, ScrollViewInstance, StyleSheet, Text, View } from 'react-native';
+import { AddSessionSheet } from '../../components/PlanSheets';
+import { Button } from '../../components/ui';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colorOf, tintOf } from '../../components/sport';
 import { formatDay, fromKey } from '../../dates';
 import { formatMinutes } from '../../format';
 import { daysOfWeek, PHASE_LABELS, TOTAL_WEEKS } from '../../plan/schedule';
-import { dayResult, SPORTS, unitOf, weekCompliance, weekVolume } from '../../stats';
+import { dayResult, SPORTS, unitOf, weekCompliance, weekGym, weekVolume } from '../../stats';
 import { useStore, useTodayKey } from '../../store';
 import { colors, radius, spacing, type } from '../../theme';
 
 export default function PlanScreen() {
-  const { schedule, activitiesByDate, settings } = useStore();
+  const { schedule, activitiesByDate, settings, addSession } = useStore();
+  const [adding, setAdding] = useState(false);
   const todayKey = useTodayKey();
   const currentWeek = schedule.get(todayKey)?.week ?? (todayKey < settings.planStart ? 1 : TOTAL_WEEKS);
   const scroll = useRef<ScrollViewInstance>(null);
@@ -27,7 +30,8 @@ export default function PlanScreen() {
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView ref={scroll} contentContainerStyle={styles.list}>
         <Text style={type.title}>Training plan</Text>
-        <Text style={type.small}>20 weeks to {settings.raceName}. Tap a day to see the workout.</Text>
+        <Text style={type.small}>20 weeks to {settings.raceName}. Tap a day to see the workout, move it or add your own session.</Text>
+        <Button label="Add a session" variant="quiet" onPress={() => setAdding(true)} />
 
         {Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1).map((week) => {
           const days = daysOfWeek(schedule, week);
@@ -35,6 +39,7 @@ export default function PlanScreen() {
           const first = days[0];
           const compliance = weekCompliance(schedule, activitiesByDate, week, todayKey);
           const volume = weekVolume(schedule, activitiesByDate, week);
+          const gym = weekGym(schedule, activitiesByDate, week);
           const isCurrent = week === currentWeek;
           return (
             <View
@@ -85,11 +90,24 @@ export default function PlanScreen() {
                     ? `Swim ${(volume[s].planned / 1000).toFixed(1)} km`
                     : `${s === 'bike' ? 'Bike' : 'Run'} ${formatMinutes(volume[s].planned)}`,
                 ).join(' · ')}
+                {gym.planned > 0 ? ` · Gym ${formatMinutes(gym.planned)}` : ''}
               </Text>
             </View>
           );
         })}
       </ScrollView>
+      {adding && (
+        <AddSessionSheet
+          visible
+          schedule={schedule}
+          initialDate={schedule.has(todayKey) ? todayKey : settings.planStart}
+          onClose={() => setAdding(false)}
+          onSave={(session) => {
+            addSession(session);
+            setAdding(false);
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 }
