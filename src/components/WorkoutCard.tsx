@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Activity } from '../activities';
+import { fromKey } from '../dates';
 import { formatClock, formatDistance, formatMinutes } from '../format';
 import { Status, WorkoutResult } from '../matching';
 import { PlannedWorkout } from '../plan/types';
@@ -45,7 +46,11 @@ export function WorkoutCard({ result, detailed }: Props) {
           <Text style={type.small}>
             {SPORT_LABELS[workout.kind]}
             {plannedAmount(workout) ? ` · ${plannedAmount(workout)}` : ''}
+            {workout.custom ? ' · added by you' : ''}
           </Text>
+          {workout.movedFrom && (
+            <Text style={styles.moved}>Moved from {fromKey(workout.movedFrom).toLocaleDateString(undefined, { weekday: 'long' })}</Text>
+          )}
         </View>
         <View style={styles.status} accessibilityLabel={s.label}>
           <MaterialCommunityIcons name={s.icon as never} size={26} color={s.color} />
@@ -83,6 +88,7 @@ const styles = StyleSheet.create({
   },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   main: { flex: 1 },
+  moved: { fontSize: 12, fontWeight: '600', color: colors.warning },
   status: { width: 28, alignItems: 'center' },
   done: { fontSize: 13, color: colors.accent, fontWeight: '600' },
   steps: { gap: 4, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, paddingTop: spacing.sm },

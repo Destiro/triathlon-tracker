@@ -2,7 +2,7 @@ import { Activity } from './activities';
 import { addDays, fromKey, toKey } from './dates';
 import { DayResult, matchDay, statusScore, WorkoutResult } from './matching';
 import { daysOfWeek, Schedule } from './plan/schedule';
-import { Sport } from './plan/types';
+import { Discipline, Sport } from './plan/types';
 
 export const SPORTS: Sport[] = ['swim', 'bike', 'run'];
 
@@ -30,6 +30,7 @@ export function weekVolume(schedule: Schedule, activitiesByDate: Map<string, Act
   const volume = emptyVolume();
   for (const day of daysOfWeek(schedule, week)) {
     for (const w of day.workouts) {
+      if (w.kind === 'gym') continue;
       const legs = w.legs ?? [{ sport: w.kind as Sport, minutes: w.minutes, metres: w.metres }];
       for (const leg of legs) {
         const amount = unitOf(leg.sport) === 'metres' ? leg.metres : leg.minutes;
@@ -37,9 +38,19 @@ export function weekVolume(schedule: Schedule, activitiesByDate: Map<string, Act
       }
     }
     for (const a of activitiesByDate.get(day.date) ?? []) {
-      if (a.sport === 'other') continue;
+      if (a.sport === 'other' || a.sport === 'gym') continue;
       volume[a.sport].actual += unitOf(a.sport) === 'metres' ? a.distanceM : a.movingS / 60;
     }
+  }
+  return volume;
+}
+
+/** Gym and strength minutes for one plan week: the sessions planned (your own) against what the watch recorded. */
+export function weekGym(schedule: Schedule, activitiesByDate: Map<string, Activity[]>, week: number): Volume {
+  const volume = { planned: 0, actual: 0 };
+  for (const day of daysOfWeek(schedule, week)) {
+    for (const w of day.workouts) if (w.kind === 'gym') volume.planned += w.minutes ?? 0;
+    for (const a of activitiesByDate.get(day.date) ?? []) if (a.sport === 'gym') volume.actual += a.movingS / 60;
   }
   return volume;
 }
@@ -178,10 +189,10 @@ export interface SportTotals {
   elevationM: number;
 }
 
-export function totals(activities: Activity[], sinceKey: string): Record<Sport, SportTotals> {
+export function totals(activities: Activity[], sinceKey: string): Record<Discipline, SportTotals> {
   const out = Object.fromEntries(
-    SPORTS.map((s) => [s, { count: 0, distanceM: 0, movingS: 0, elevationM: 0 }]),
-  ) as Record<Sport, SportTotals>;
+    [...SPORTS, 'gym' as const].map((s) => [s, { count: 0, distanceM: 0, movingS: 0, elevationM: 0 }]),
+  ) as Record<Discipline, SportTotals>;
   for (const a of activities) {
     if (a.sport === 'other' || a.date < sinceKey) continue;
     const t = out[a.sport];

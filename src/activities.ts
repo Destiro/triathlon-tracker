@@ -1,10 +1,10 @@
-import { Sport } from './plan/types';
+import { Discipline } from './plan/types';
 
 /** A workout recorded on the watch, as it came through Strava. Only what the app uses is kept. */
 export interface Activity {
   id: number;
   name: string;
-  sport: Sport | 'other';
+  sport: Discipline | 'other';
   /** Strava's own type, such as "Run" or "VirtualRide". */
   type: string;
   /** Local date, YYYY-MM-DD. */
@@ -22,7 +22,7 @@ export interface Activity {
   avgCadence?: number;
 }
 
-const SPORTS: Record<string, Sport> = {
+const SPORTS: Record<string, Discipline> = {
   Swim: 'swim',
   Ride: 'bike',
   VirtualRide: 'bike',
@@ -31,6 +31,10 @@ const SPORTS: Record<string, Sport> = {
   Run: 'run',
   TrailRun: 'run',
   VirtualRun: 'run',
+  WeightTraining: 'gym',
+  Workout: 'gym',
+  Crossfit: 'gym',
+  HighIntensityIntervalTraining: 'gym',
 };
 
 const num = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);

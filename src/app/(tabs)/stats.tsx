@@ -121,8 +121,9 @@ export default function StatsScreen() {
 
         <Card>
           <Text style={type.heading}>Totals since the plan began</Text>
-          {SPORTS.map((s) => {
+          {[...SPORTS, 'gym' as const].map((s) => {
             const t = sinceStart[s];
+            if (s === 'gym' && t.count === 0) return null;
             return (
               <View key={s} style={styles.totalRow}>
                 <SportBadge kind={s} size={28} />
@@ -131,7 +132,8 @@ export default function StatsScreen() {
                     {SPORT_LABELS[s]} · {t.count} {t.count === 1 ? 'session' : 'sessions'}
                   </Text>
                   <Text style={type.small}>
-                    {formatDistance(t.distanceM, s === 'swim')} · {formatMinutes(t.movingS / 60)}
+                    {s === 'gym' ? '' : `${formatDistance(t.distanceM, s === 'swim')} · `}
+                    {formatMinutes(t.movingS / 60)}
                     {s === 'bike' && t.elevationM ? ` · ${Math.round(t.elevationM).toLocaleString()} m climbing` : ''}
                   </Text>
                 </View>

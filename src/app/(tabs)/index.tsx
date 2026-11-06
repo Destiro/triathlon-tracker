@@ -11,7 +11,7 @@ import { addDays, daysBetween, formatDay, fromKey, toKey } from '../../dates';
 import { formatAgo, formatMinutes } from '../../format';
 import { daysOfWeek, PHASE_LABELS, TOTAL_WEEKS } from '../../plan/schedule';
 import { stepBlocks } from '../../plan/steps';
-import { dayResult, SPORTS, unitOf, UpNext, upNext, weekCompliance, weekVolume } from '../../stats';
+import { dayResult, SPORTS, unitOf, UpNext, upNext, weekCompliance, weekGym, weekVolume } from '../../stats';
 import { useStore, useTodayKey } from '../../store';
 import { colors, radius, spacing, type } from '../../theme';
 
@@ -28,6 +28,7 @@ export default function TodayScreen() {
   const week = today?.week ?? (todayKey < settings.planStart ? 1 : TOTAL_WEEKS);
   const compliance = weekCompliance(schedule, activitiesByDate, week, todayKey);
   const volume = weekVolume(schedule, activitiesByDate, week);
+  const gym = weekGym(schedule, activitiesByDate, week);
   const doneCount = Math.round(compliance.score);
 
   // Everything else on today's list: what's already in, then what's still to come after the one up next.
@@ -132,6 +133,12 @@ export default function TodayScreen() {
                 );
               })}
             </View>
+            {(gym.planned > 0 || gym.actual > 0) && (
+              <Text style={type.small}>
+                Gym {formatMinutes(gym.actual)}
+                {gym.planned > 0 ? ` of ${formatMinutes(gym.planned)}` : ''}
+              </Text>
+            )}
             <WeekStrip days={daysOfWeek(schedule, week)} schedule={schedule} activitiesByDate={activitiesByDate} todayKey={todayKey} />
           </Card>
         )}

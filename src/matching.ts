@@ -1,6 +1,6 @@
 import { Activity } from './activities';
 import { ScheduledDay } from './plan/schedule';
-import { PlannedWorkout, Sport } from './plan/types';
+import { Discipline, PlannedWorkout } from './plan/types';
 
 export type Status = 'done' | 'partial' | 'missed' | 'today' | 'upcoming';
 
@@ -24,7 +24,7 @@ export const DONE_AT = 0.8;
 // When a swim reached Strava without a distance, its time is compared at this pace instead.
 const SWIM_SECONDS_PER_100M = 150;
 
-export function sportsOf(workout: PlannedWorkout): Sport[] {
+export function sportsOf(workout: PlannedWorkout): Discipline[] {
   if (workout.kind === 'brick') return ['bike', 'run'];
   if (workout.kind === 'race') return ['swim', 'bike', 'run'];
   return [workout.kind];
@@ -54,13 +54,25 @@ function fractionDone(workout: PlannedWorkout, activities: Activity[]): number {
 /**
  * Pairs a day's planned workouts with what the watch recorded that day. Each workout takes every activity of its
  * sport (a brick takes the ride and the run; a race takes all three), so a swim split into two recordings still
- * counts in full. Whatever is left over is extra.
+ * counts in full. When a later workout the same day shares a sport (a ride moved onto a day that has one), recordings
+ * are handed out in the order they happened, each workout taking them until it is done, so two rides count as two.
+ * Whatever is left over is extra.
  */
 export function matchDay(day: ScheduledDay | undefined, activities: Activity[], todayKey: string): DayResult {
   const unclaimed = [...activities];
-  const results = (day?.workouts ?? []).map((workout): WorkoutResult => {
+  const planned = day?.workouts ?? [];
+  const results = planned.map((workout, i): WorkoutResult => {
     const sports = sportsOf(workout);
-    const mine = unclaimed.filter((a) => a.sport !== 'other' && sports.includes(a.sport));
+    let mine = unclaimed.filter((a) => a.sport !== 'other' && sports.includes(a.sport));
+    const shared = planned.slice(i + 1).some((later) => sportsOf(later).some((s) => sports.includes(s)));
+    if (shared) {
+      const taken: Activity[] = [];
+      for (const a of mine) {
+        if (taken.length > 0 && fractionDone(workout, taken) >= DONE_AT) break;
+        taken.push(a);
+      }
+      mine = taken;
+    }
     for (const a of mine) unclaimed.splice(unclaimed.indexOf(a), 1);
 
     const fraction = fractionDone(workout, mine);

@@ -17,6 +17,11 @@ and kept here as the same number in metres.
 - **Today**: days to the race, today's workouts with their warm-up, main set and cool-down, whether each is
   done, a week strip, and this week's swim, bike and run against the plan.
 - **Plan**: all 20 weeks laid out on real dates, with how much of each week you have done. Tap any day.
+- **Editing the plan**: on a day, move a workout to another day, or put it back. Add your own sessions, such as
+  gym, once or every week until the race. Your changes are saved apart from the plan, so the plan itself is
+  never altered. The watch ticks a moved workout off on its new day. Strength activities from Strava (weight
+  training, workout, crossfit, HIIT) count as gym; they tick off a gym session, count in training load and show
+  in the totals.
 - **Stats**: weekly volume per sport (planned against done), fitness / fatigue / form from heart rate, aerobic
   efficiency for runs and rides, totals and best efforts.
 - **Settings**: connect Strava, the race and its date, when week 1 starts, and your max and resting heart rate.

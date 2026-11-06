@@ -12,6 +12,7 @@ export const SPORT_LABELS: Record<Kind, string> = {
   run: 'Run',
   brick: 'Brick',
   race: 'Race',
+  gym: 'Gym',
   other: 'Other',
 };
 
