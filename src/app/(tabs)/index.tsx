@@ -154,19 +154,19 @@ function UpNextCard({ next, todayKey }: { next: UpNext; todayKey: string }) {
   const unit = workout.kind === 'swim' ? '' : ' min';
 
   return (
-    <Pressable onPress={() => openDay(next.date)} style={[styles.hero, { backgroundColor: colorOf(workout.kind) }]} accessibilityRole="button">
+    <Pressable onPress={() => openDay(next.date)} style={[styles.hero, { backgroundColor: tintOf(workout.kind), borderColor: colorOf(workout.kind) }]} accessibilityRole="button">
       <View style={styles.between}>
-        <Text style={styles.heroLabel}>{when.toUpperCase()}</Text>
-        <Text style={styles.heroLabel}>{SPORT_LABELS[workout.kind].toUpperCase()}</Text>
+        <Text style={[styles.heroLabel, { color: colorOf(workout.kind) }]}>{when.toUpperCase()}</Text>
+        <Text style={[styles.heroLabel, { color: colorOf(workout.kind) }]}>{SPORT_LABELS[workout.kind].toUpperCase()}</Text>
       </View>
       <Text style={styles.heroTitle}>{workout.title}</Text>
-      <Text style={styles.heroAmount}>{plannedAmount(workout)}</Text>
+      <Text style={[styles.heroAmount, { color: colorOf(workout.kind) }]}>{plannedAmount(workout)}</Text>
 
       {blocks && (
         <View style={styles.bar}>
           {blocks.map((b) => (
-            <View key={b.label} style={[styles.block, { flex: b.amount }, b.label === 'Main' && styles.blockMain]}>
-              <Text style={styles.blockText} numberOfLines={1}>
+            <View key={b.label} style={[styles.block, { flex: b.amount }, b.label === 'Main' && { backgroundColor: colorOf(workout.kind) }]}>
+              <Text style={[styles.blockText, b.label === 'Main' && { color: colors.onAccent }]} numberOfLines={1}>
                 {b.label} {b.amount}
                 {unit}
               </Text>
@@ -195,17 +195,16 @@ const styles = StyleSheet.create({
   phase: { fontSize: 13, fontWeight: '600', color: colors.accent, flexShrink: 1 },
   countdown: { ...type.number, fontSize: 15 },
   between: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: spacing.sm },
-  hero: { borderRadius: radius.lg, padding: spacing.lg, gap: spacing.sm },
-  heroLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 0.8, color: colors.onAccent, opacity: 0.75 },
-  heroTitle: { fontSize: 24, fontWeight: '800', color: colors.onAccent },
-  heroAmount: { ...type.hero, fontSize: 36, color: colors.onAccent, lineHeight: 42 },
+  hero: { borderRadius: radius.lg, borderWidth: 1.5, borderLeftWidth: 6, padding: spacing.lg, gap: spacing.sm },
+  heroLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 0.8 },
+  heroTitle: { fontSize: 24, fontWeight: '800', color: colors.ink },
+  heroAmount: { ...type.hero, fontSize: 36, lineHeight: 42 },
   bar: { flexDirection: 'row', gap: 3, height: 26, borderRadius: radius.sm, overflow: 'hidden' },
-  block: { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(10, 15, 26, 0.18)', paddingHorizontal: 4 },
-  blockMain: { backgroundColor: 'rgba(10, 15, 26, 0.38)' },
-  blockText: { fontSize: 11, fontWeight: '800', color: colors.onAccent },
+  block: { justifyContent: 'center', alignItems: 'center', backgroundColor: colors.surface, paddingHorizontal: 4 },
+  blockText: { fontSize: 11, fontWeight: '800', color: colors.ink },
   steps: { gap: 3 },
-  step: { fontSize: 14, lineHeight: 20, color: colors.onAccent },
-  heroNote: { fontSize: 12, color: colors.onAccent, opacity: 0.75 },
+  step: { fontSize: 14, lineHeight: 20, color: colors.ink },
+  heroNote: { fontSize: 12, color: colors.inkSoft },
   rings: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: spacing.xs },
   ring: { alignItems: 'center', gap: 2, flex: 1 },
   ringLabel: { fontSize: 13, fontWeight: '600', color: colors.ink },
