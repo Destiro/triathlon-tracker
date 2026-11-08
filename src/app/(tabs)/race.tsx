@@ -6,11 +6,35 @@ import { colorOf, SPORT_LABELS, tintOf } from '../../components/sport';
 import { Card } from '../../components/ui';
 import { plannedAmount } from '../../components/WorkoutCard';
 import { daysBetween, fromKey } from '../../dates';
-import { formatDistance } from '../../format';
+import { formatClock, formatDistance, formatHoursMinutes, formatRunPace, formatSpeed, formatSwimPace } from '../../format';
+import { Confidence, LegPrediction, predictRace } from '../../prediction';
 import { daysOfWeek, PHASE_LABELS, TOTAL_WEEKS } from '../../plan/schedule';
-import { Phase } from '../../plan/types';
+import { Phase, Sport } from '../../plan/types';
 import { useStore, useTodayKey } from '../../store';
 import { colors, radius, spacing, sportColors, type } from '../../theme';
+
+const CONFIDENCE: Record<Confidence, { label: string; color: string }> = {
+  rough: { label: 'Rough estimate: only one recent session on a leg', color: colors.warning },
+  fair: { label: 'Fair estimate', color: colors.inkSoft },
+  good: { label: 'Good estimate: four or more recent sessions on every leg', color: colors.success },
+};
+
+/** One leg of the predicted race: its time and pace or speed, and what it is based on. */
+function PredictedLeg({ leg }: { leg: LegPrediction }) {
+  const pace = leg.speed === null ? '' : leg.sport === 'swim' ? formatSwimPace(leg.speed) : leg.sport === 'bike' ? formatSpeed(leg.speed) : formatRunPace(leg.speed);
+  return (
+    <View style={[styles.leg, styles.predictedLeg, { borderLeftColor: colorOf(leg.sport), backgroundColor: tintOf(leg.sport) }]}>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={type.body}>
+          {SPORT_LABELS[leg.sport]}
+          {pace ? ` · ${pace}` : ''}
+        </Text>
+        <Text style={leg.seconds === null ? styles.missing : type.small}>{leg.basedOn}</Text>
+      </View>
+      <Text style={styles.legAmount}>{leg.seconds === null ? '–' : formatClock(leg.seconds)}</Text>
+    </View>
+  );
+}
 
 const PHASE_COLORS: Record<Phase, string> = {
   base: colors.inkFaint,
@@ -21,13 +45,15 @@ const PHASE_COLORS: Record<Phase, string> = {
 };
 
 export default function RaceScreen() {
-  const { settings, schedule } = useStore();
+  const { settings, schedule, activities } = useStore();
   const todayKey = useTodayKey();
   const daysToGo = daysBetween(fromKey(todayKey), fromKey(settings.raceDate));
   const currentWeek = schedule.get(todayKey)?.week ?? (todayKey < settings.planStart ? 0 : TOTAL_WEEKS + 1);
   const race = schedule.get(settings.raceDate)?.workouts.find((w) => w.kind === 'race');
   const legs = race?.legs ?? [];
   const totalM = legs.reduce((sum, l) => sum + (l.metres ?? 0), 0);
+  const metres = (sport: Sport, fallback: number) => legs.find((l) => l.sport === sport)?.metres ?? fallback;
+  const prediction = predictRace(activities, todayKey, { swim: metres('swim', 1900), bike: metres('bike', 90000), run: metres('run', 21100) });
 
   const weeks = Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1).map((w) => ({ week: w, phase: daysOfWeek(schedule, w)[0]?.phase ?? 'base' }));
   const raceWeek = daysOfWeek(schedule, TOTAL_WEEKS);
@@ -54,6 +80,33 @@ export default function RaceScreen() {
             <Text style={styles.big}>{daysToGo === 0 ? 'Race day' : 'Done'}</Text>
           )}
         </Card>
+
+        {daysToGo > 0 && (
+          <Card title="Predicted finish">
+            {prediction.total !== null ? (
+              <View style={styles.predicted}>
+                <Text style={styles.big}>{formatHoursMinutes(prediction.total)}</Text>
+                <Text style={type.body}>
+                  Likely between {formatHoursMinutes(prediction.low!)} and {formatHoursMinutes(prediction.high!)}
+                </Text>
+                <Text style={[styles.confidence, { color: CONFIDENCE[prediction.confidence!].color }]}>{CONFIDENCE[prediction.confidence!].label}</Text>
+              </View>
+            ) : (
+              <Text style={type.body}>Not enough recent training to predict a finish yet. Each leg needs a long enough session in the last 6 weeks.</Text>
+            )}
+
+            <PredictedLeg leg={prediction.swim} />
+            <Text style={styles.transition}>T1 · {formatClock(prediction.t1)} (assumed)</Text>
+            <PredictedLeg leg={prediction.bike} />
+            <Text style={styles.transition}>T2 · {formatClock(prediction.t2)} (assumed)</Text>
+            <PredictedLeg leg={prediction.run} />
+
+            <Text style={type.small}>
+              An estimate from your last 6 weeks of training. It reads slow early in the plan and tightens as your sessions get longer. Race-day effort, the
+              course, the weather and a wetsuit are not in it.
+            </Text>
+          </Card>
+        )}
 
         {legs.length > 0 && (
           <Card title="The course" note={`${formatDistance(totalM)} in all`}>
@@ -123,6 +176,11 @@ const styles = StyleSheet.create({
   countdown: { alignItems: 'center', paddingVertical: spacing.xl },
   big: { ...type.hero, fontSize: 64, lineHeight: 72 },
   leg: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderLeftWidth: 5, borderRadius: radius.sm, paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
+  predicted: { alignItems: 'center', gap: 2, paddingVertical: spacing.sm },
+  confidence: { fontSize: 12, fontWeight: '600', textAlign: 'center' },
+  predictedLeg: { alignItems: 'flex-start' },
+  transition: { fontSize: 12, color: colors.inkSoft, textAlign: 'center' },
+  missing: { fontSize: 13, color: colors.warning },
   legAmount: { ...type.number, fontSize: 18 },
   weeks: { flexDirection: 'row', gap: 3, alignItems: 'center', height: 30 },
   week: { flex: 1, height: 20, borderRadius: 3 },

@@ -1,4 +1,4 @@
-import { formatClock, formatDistance, formatMinutes, formatRunPace, formatSwimPace } from '../format';
+import { formatClock, formatHoursMinutes, formatDistance, formatMinutes, formatRunPace, formatSwimPace } from '../format';
 
 describe('format', () => {
   it('writes minutes the way the plan does', () => {
@@ -21,5 +21,15 @@ describe('format', () => {
   it('turns speed into pace per km for runs and per 100 m for swims', () => {
     expect(formatRunPace(1000 / 312)).toBe('5:12 /km');
     expect(formatSwimPace(100 / 125)).toBe('2:05 /100m');
+  });
+});
+
+describe('formatHoursMinutes', () => {
+  it('writes a finish time as hours and minutes, rounded to the nearest minute', () => {
+    expect([formatHoursMinutes(24120), formatHoursMinutes(24149), formatHoursMinutes(24151), formatHoursMinutes(3540)]).toEqual(['6:42', '6:42', '6:43', '0:59']);
+  });
+
+  it('carries into the next hour when rounding up', () => {
+    expect(formatHoursMinutes(7170)).toBe('2:00');
   });
 });
