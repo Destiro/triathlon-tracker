@@ -16,6 +16,12 @@ export function formatClock(seconds: number): string {
   return h ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`;
 }
 
+/** A finish time without the seconds, rounded to the nearest minute: 24120 → "6:42". */
+export function formatHoursMinutes(seconds: number): string {
+  const minutes = Math.round(seconds / 60);
+  return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}`;
+}
+
 /** 1300 → "1,300 m", 21100 → "21.1 km". Swims stay in metres. */
 export function formatDistance(metres: number, inMetres = false): string {
   if (inMetres || metres < 1000) return `${Math.round(metres).toLocaleString()} m`;

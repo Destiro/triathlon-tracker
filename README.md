@@ -20,6 +20,14 @@ and kept here as the same number in metres.
 - **Plan**: a month calendar. Each day has a dot per workout in its sport's colour, solid once done. Each week
   shows its planned hours, and finished weeks fade. Tap a day to see its workouts underneath, or open it to move a
   workout or see what the watch recorded.
+- **Race**: the countdown, the course, the road through the plan phases, race week, and a predicted finish. The
+  prediction uses your last six weeks: the swim is the average of your three fastest swims over 1 km (pool swims
+  are slowed 10% for open water; open water swims are used as they are), the bike is the average speed of your
+  three longest rides (15 km and 45 minutes or more), the run is the average pace of your three longest runs (4 km
+  or more), and the transitions are fixed at 5 and 3 minutes. The range around it is 4%, 7% or 12% depending on
+  how many recent sessions it has to go on. It knows nothing about race-day effort, the course or the weather, and
+  hills skew the bike speed because there is no power meter. It reads slow early in the plan. All the numbers are
+  named constants at the top of src/prediction.ts.
 - **Heart rate zones**: each recorded workout shows its time in five zones. Strava's own zones are for subscribers
   only, so the app reads the heart rate stream and works zones out from your max heart rate (Settings): zone 1 is
   under 60% of max, then 70%, 80% and 90%. Workouts that ask for one effort all the way through (foundation, long,
@@ -90,6 +98,7 @@ Tokens are kept in the phone's secure storage.
 
 - `src/app/` – screens (Expo Router): `(tabs)/` for Today, Plan, Stats and Settings, `day/[date]` for one day
 - `src/plan/` – the plan as data, and `schedule.ts`, which lays it on the calendar and fits race week to the race date
+- `src/prediction.ts` – the predicted race finish
 - `src/zones.ts` – heart rate zones, and how the plan's effort words map to them
 - `src/matching.ts` – pairs planned workouts with what the watch recorded
 - `src/stats.ts` – weekly volume, compliance, training load, efficiency and best efforts
