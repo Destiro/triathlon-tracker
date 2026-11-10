@@ -41,6 +41,23 @@ jest.mock('../store', () => {
     connectStrava: jest.fn(),
     moveWorkout: jest.fn(),
     removeSession: jest.fn(),
+    health: {
+      '2026-11-06': {
+        date: '2026-11-06',
+        hrv: 58,
+        sleep: {
+          start: new Date(2026, 10, 5, 22, 40).toISOString(),
+          end: new Date(2026, 10, 6, 6, 10).toISOString(),
+          asleepMin: 425,
+          awakeMin: 25,
+          deepMin: 70,
+          remMin: 95,
+          lightMin: 260,
+          sleepingHr: 52,
+        },
+      },
+    },
+    healthSyncing: false,
   };
   return { useTodayKey: () => mockToday, useStore: () => store };
 });
@@ -59,6 +76,16 @@ test('Today shows every workout for the day at once, with its detail', async () 
   expect(screen.getByText('40 min in total')).toBeTruthy();
   expect(screen.getByText('This week')).toBeTruthy();
   for (const gone of ['UP NEXT', 'Up next', 'Later today', 'Done today']) expect(screen.queryByText(gone)).toBeNull();
+});
+
+test("Today shows last night's sleep from Health Connect", async () => {
+  await render(<TodayScreen />);
+  expect(screen.getByText('Last night')).toBeTruthy();
+  expect(screen.getByText('7 h 05')).toBeTruthy();
+  expect(screen.getByText('Deep 1 h 10')).toBeTruthy();
+  expect(screen.getByText('REM 1 h 35')).toBeTruthy();
+  expect(screen.getByText('52 bpm')).toBeTruthy();
+  expect(screen.getByText('58 ms')).toBeTruthy();
 });
 
 test('tapping a workout on Today does not open another screen, and the run can be moved from its card', async () => {

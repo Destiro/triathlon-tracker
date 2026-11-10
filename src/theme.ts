@@ -56,6 +56,18 @@ export const sportIcons: Record<WorkoutKind | 'other', string> = {
   other: 'help-circle-outline',
 };
 
+/** Sleep stages and recovery lines. Always drawn with a label beside them, never colour alone. */
+export const healthColors = {
+  deep: '#818CF8',
+  rem: '#F472B6',
+  light: '#7DD3FC',
+  awake: '#8D98AC',
+  sleep: '#A78BFA',
+  heart: '#F87171',
+  hrv: '#4ADE80',
+  vo2: '#FBBF24',
+};
+
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 };
 export const radius = { sm: 8, md: 12, lg: 18, pill: 999 };
 

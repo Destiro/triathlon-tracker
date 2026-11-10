@@ -5,6 +5,7 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'r
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ring } from '../../components/charts';
 import { DayWorkouts } from '../../components/DayWorkouts';
+import { LastNight } from '../../components/HealthCards';
 import { colorOf, SPORT_LABELS, tintOf } from '../../components/sport';
 import { Button, Card, Empty } from '../../components/ui';
 import { WeekStrip } from '../../components/WeekStrip';
@@ -18,7 +19,7 @@ import { useStore, useTodayKey } from '../../store';
 import { colors, radius, spacing, type } from '../../theme';
 
 export default function TodayScreen() {
-  const { settings, schedule, activities, activitiesByDate, connected, syncing, sync, lastSync, syncError, connectStrava } = useStore();
+  const { settings, schedule, activities, activitiesByDate, connected, syncing, sync, lastSync, syncError, connectStrava, health, healthSyncing } = useStore();
   const todayKey = useTodayKey();
   const today = schedule.get(todayKey);
   const daysToRace = daysBetween(fromKey(todayKey), fromKey(settings.raceDate));
@@ -35,7 +36,7 @@ export default function TodayScreen() {
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView
         contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={syncing} onRefresh={sync} colors={[colors.accent]} progressBackgroundColor={colors.surface} />}
+        refreshControl={<RefreshControl refreshing={syncing || healthSyncing} onRefresh={sync} colors={[colors.accent]} progressBackgroundColor={colors.surface} />}
       >
         <View style={styles.topRow}>
           <Text style={styles.phase}>
@@ -70,6 +71,8 @@ export default function TodayScreen() {
             {syncError ?? (syncing ? 'Syncing with Strava…' : lastSync ? `Synced ${formatAgo(lastSync)} · pull down to refresh` : 'Not synced yet')}
           </Text>
         )}
+
+        <LastNight health={health} date={todayKey} />
 
         {bests.map((b) => (
           <View key={b.label} style={[styles.best, { borderColor: colors.warning }]} accessibilityLabel={`New best: ${b.label}`}>
