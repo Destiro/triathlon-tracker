@@ -3,6 +3,7 @@ import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, Te
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card } from '../../components/ui';
 import { fromKey, isDateKey } from '../../dates';
+import { openSettings as openHealthConnect } from '../../health/connect';
 import { formatAgo } from '../../format';
 import { Settings, useStore } from '../../store';
 import { colors, radius, spacing, type } from '../../theme';
@@ -34,7 +35,26 @@ function Field({ label, value, onCommit, hint, keyboard }: { label: string; valu
 }
 
 export default function SettingsScreen() {
-  const { settings, updateSettings, connected, athlete, lastSync, syncing, syncError, connectStrava, disconnectStrava, sync } = useStore();
+  const {
+    settings,
+    updateSettings,
+    connected,
+    athlete,
+    lastSync,
+    syncing,
+    syncError,
+    connectStrava,
+    disconnectStrava,
+    sync,
+    health,
+    healthConnected,
+    lastHealthSync,
+    healthSyncing,
+    healthError,
+    connectHealth,
+    disconnectHealth,
+  } = useStore();
+  const healthDays = Object.keys(health).length;
 
   const date = (key: keyof Pick<Settings, 'planStart' | 'raceDate'>, mondayOnly = false) => (v: string) => {
     if (!isDateKey(v)) return 'Use the format YYYY-MM-DD.';
@@ -54,6 +74,16 @@ export default function SettingsScreen() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Disconnect', style: 'destructive', onPress: disconnectStrava },
     ]);
+
+  const confirmHealthDisconnect = () =>
+    Alert.alert(
+      'Stop reading Health Connect?',
+      'Your sleep and heart rate history is removed from this app. To take back access as well, turn it off in Health Connect.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Stop reading', style: 'destructive', onPress: disconnectHealth },
+      ],
+    );
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -77,6 +107,29 @@ export default function SettingsScreen() {
                 <Text style={type.body}>Your Galaxy Watch uploads to Strava through Samsung Health. Connect it to pull your workouts in.</Text>
                 <Button label="Connect Strava" onPress={connectStrava} />
                 {syncError && <Text style={styles.error}>{syncError}</Text>}
+              </>
+            )}
+          </Card>
+
+          <Card>
+            <Text style={type.heading}>Health Connect</Text>
+            {healthConnected ? (
+              <>
+                <Text style={type.body}>Reading sleep, VO2 max and heart rate{healthDays ? ` · ${healthDays} days so far` : ''}.</Text>
+                <Text style={[type.small, healthError ? styles.error : null]}>
+                  {healthError ?? (healthSyncing ? 'Reading…' : lastHealthSync ? `Last read ${formatAgo(lastHealthSync)}` : 'Not read yet')}
+                </Text>
+                <Button label="Choose what the app can read" variant="quiet" onPress={openHealthConnect} />
+                <Button label="Stop reading" variant="quiet" onPress={confirmHealthDisconnect} />
+              </>
+            ) : (
+              <>
+                <Text style={type.body}>
+                  Samsung Health shares your sleep, VO2 max and heart rate with Health Connect. Connect it to see sleep stages, recovery and VO2 max
+                  trends alongside your training.
+                </Text>
+                <Button label="Connect Health Connect" onPress={connectHealth} />
+                {healthError && <Text style={styles.error}>{healthError}</Text>}
               </>
             )}
           </Card>

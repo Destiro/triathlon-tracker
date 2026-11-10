@@ -40,6 +40,7 @@ jest.mock('../store', () => {
     connectStrava: jest.fn(),
     moveWorkout: jest.fn(),
     removeSession: jest.fn(),
+    health: {},
     addSession: jest.fn(),
     setOpenWater: jest.fn(),
   };

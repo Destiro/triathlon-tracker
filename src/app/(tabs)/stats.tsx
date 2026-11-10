@@ -2,6 +2,7 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BarChart, LineChart } from '../../components/charts';
+import { HealthStats } from '../../components/HealthCards';
 import { bestValue } from '../../bests';
 import { colorOf, SPORT_LABELS, SportBadge, tintOf } from '../../components/sport';
 import { Card, Empty } from '../../components/ui';
@@ -18,17 +19,18 @@ const FATIGUE_COLOR = '#A78BFA';
 const shortDate = (key: string) => fromKey(key).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 
 export default function StatsScreen() {
-  const { schedule, activities, activitiesByDate, settings } = useStore();
+  const { schedule, activities, activitiesByDate, settings, health } = useStore();
   const todayKey = useTodayKey();
   const currentWeek = Math.min(schedule.get(todayKey)?.week ?? (todayKey < settings.planStart ? 1 : TOTAL_WEEKS), TOTAL_WEEKS);
 
   if (activities.length === 0) {
     return (
       <SafeAreaView style={styles.screen} edges={['top']}>
-        <View style={styles.list}>
+        <ScrollView contentContainerStyle={styles.list}>
           <Text style={type.title}>Stats</Text>
           <Empty text="Connect Strava in Settings and your workouts will fill in the charts here." />
-        </View>
+          <HealthStats health={health} todayKey={todayKey} />
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -164,6 +166,8 @@ export default function StatsScreen() {
             ))}
           </Card>
         )}
+
+        <HealthStats health={health} todayKey={todayKey} />
 
         {best.length > 0 && (
           <Card>

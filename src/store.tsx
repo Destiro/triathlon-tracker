@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, byDate, mergeActivities } from './activities';
 import { addDays, fromKey, toKey } from './dates';
+import * as healthConnect from './health/connect';
+import { HealthByDate, mergeHealth } from './health/summary';
 import { addSessions, applyEdits, NewSession, NO_EDITS, PlanEdits, removeSession, setMove } from './plan/edits';
 import { buildSchedule, Schedule } from './plan/schedule';
 import {
@@ -40,6 +42,8 @@ const STORAGE_KEY = 'triathlon-tracker/v1';
 const OVERLAP_DAYS = 3;
 // How many workouts get their heart rate breakdown fetched in one sync.
 const ZONES_PER_SYNC = 15;
+// The first health read reaches back this far, so trends have a history from day one.
+const HEALTH_HISTORY_DAYS = 120;
 
 interface Saved {
   settings: Settings;
@@ -49,6 +53,9 @@ interface Saved {
   edits: PlanEdits;
   /** Swims you have corrected to pool (false) or open water (true), by activity id. */
   waterOverrides?: Record<string, boolean>;
+  health?: HealthByDate;
+  healthConnected?: boolean;
+  lastHealthSync?: number | null;
 }
 
 interface Store {
@@ -75,7 +82,17 @@ interface Store {
   /** Completes sign-in from the query parameters of the `strava-auth` app link. */
   finishConnect: (params: Record<string, unknown>) => Promise<void>;
   disconnectStrava: () => Promise<void>;
+  /** Pulls new workouts from Strava and new health data from Health Connect, whichever are connected. */
   sync: () => Promise<void>;
+  /** Sleep, VO2 max and heart rate from Health Connect, by the date you woke up. */
+  health: HealthByDate;
+  healthConnected: boolean;
+  lastHealthSync: number | null;
+  healthSyncing: boolean;
+  healthError: string | null;
+  connectHealth: () => Promise<void>;
+  /** Stops reading and forgets the health data on this phone. Access itself is managed in Health Connect. */
+  disconnectHealth: () => void;
 }
 
 const StoreContext = createContext<Store | null>(null);
@@ -93,6 +110,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const syncingRef = useRef(false);
+  const [health, setHealth] = useState<HealthByDate>({});
+  const [healthConnected, setHealthConnected] = useState(false);
+  const [lastHealthSync, setLastHealthSync] = useState<number | null>(null);
+  const [healthSyncing, setHealthSyncing] = useState(false);
+  const [healthError, setHealthError] = useState<string | null>(null);
+  const healthSyncingRef = useRef(false);
 
   useEffect(() => {
     (async () => {
@@ -106,6 +129,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           setLastSync(saved.lastSync ?? null);
           setAthlete(saved.athlete ?? '');
           setEdits({ ...NO_EDITS, ...saved.edits });
+          setHealth(saved.health ?? {});
+          setHealthConnected(saved.healthConnected ?? false);
+          setLastHealthSync(saved.lastHealthSync ?? null);
         }
         setTokens(await loadTokens());
       } catch {
@@ -117,9 +143,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!ready) return;
-    const saved: Saved = { settings, activities: stored, lastSync, athlete, edits, waterOverrides };
+    const saved: Saved = { settings, activities: stored, lastSync, athlete, edits, waterOverrides, health, healthConnected, lastHealthSync };
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(saved)).catch(() => {});
-  }, [ready, settings, stored, lastSync, athlete, edits, waterOverrides]);
+  }, [ready, settings, stored, lastSync, athlete, edits, waterOverrides, health, healthConnected, lastHealthSync]);
 
   const schedule = useMemo(
     () => applyEdits(buildSchedule(settings.planStart, settings.raceDate, settings.raceName), edits),
@@ -190,9 +216,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [lastSync, settings.planStart],
   );
 
+  const runHealthSync = useCallback(async (since: number | null) => {
+    if (healthSyncingRef.current) return;
+    healthSyncingRef.current = true;
+    setHealthSyncing(true);
+    try {
+      // Sleep is filed under the day you woke up, so look back a few days to finish nights that were still going.
+      const from = since ? since - OVERLAP_DAYS * 86400000 : addDays(new Date(), -HEALTH_HISTORY_DAYS).getTime();
+      const incoming = await healthConnect.fetchHealthSince(new Date(from).toISOString());
+      setHealth((saved) => mergeHealth(saved, incoming));
+      setLastHealthSync(Date.now());
+      setHealthError(null);
+    } catch (e) {
+      setHealthError(e instanceof healthConnect.HealthError ? e.message : 'Could not read from Health Connect.');
+    } finally {
+      healthSyncingRef.current = false;
+      setHealthSyncing(false);
+    }
+  }, []);
+
   const sync = useCallback(async () => {
-    if (tokens) await runSync(tokens);
-  }, [tokens, runSync]);
+    await Promise.all([tokens ? runSync(tokens) : null, healthConnected ? runHealthSync(lastHealthSync) : null]);
+  }, [tokens, runSync, healthConnected, runHealthSync, lastHealthSync]);
 
   // Fetch new workouts whenever the app opens.
   const syncedOnOpen = useRef(false);
@@ -202,6 +247,37 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       runSync(tokens);
     }
   }, [ready, tokens, runSync]);
+
+  // And new health data.
+  const healthSyncedOnOpen = useRef(false);
+  useEffect(() => {
+    if (ready && healthConnected && !healthSyncedOnOpen.current) {
+      healthSyncedOnOpen.current = true;
+      runHealthSync(lastHealthSync);
+    }
+  }, [ready, healthConnected, runHealthSync, lastHealthSync]);
+
+  const connectHealth = useCallback(async () => {
+    try {
+      if (!(await healthConnect.connect())) {
+        setHealthError('Allow at least sleep so the app has something to read. You can change this in Health Connect.');
+        return;
+      }
+      setHealthConnected(true);
+      setHealthError(null);
+      healthSyncedOnOpen.current = true;
+      await runHealthSync(null);
+    } catch (e) {
+      setHealthError(e instanceof healthConnect.HealthError ? e.message : 'Could not connect to Health Connect.');
+    }
+  }, [runHealthSync]);
+
+  const disconnectHealth = useCallback(() => {
+    setHealthConnected(false);
+    setHealth({});
+    setLastHealthSync(null);
+    setHealthError(null);
+  }, []);
 
   const adoptTokens = useCallback(
     async (result: StravaTokens) => {
@@ -266,6 +342,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     finishConnect,
     disconnectStrava,
     sync,
+    health,
+    healthConnected,
+    lastHealthSync,
+    healthSyncing,
+    healthError,
+    connectHealth,
+    disconnectHealth,
   };
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
