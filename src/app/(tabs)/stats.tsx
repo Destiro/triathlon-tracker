@@ -28,7 +28,7 @@ export default function StatsScreen() {
       <SafeAreaView style={styles.screen} edges={['top']}>
         <ScrollView contentContainerStyle={styles.list}>
           <Text style={type.title}>Stats</Text>
-          <Empty text="Connect Strava in Settings and your workouts will fill in the charts here." />
+          <Empty text="Connect Health Connect in Settings and your workouts will fill in the charts here." />
           <HealthStats health={health} todayKey={todayKey} />
         </ScrollView>
       </SafeAreaView>

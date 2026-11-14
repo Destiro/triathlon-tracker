@@ -39,13 +39,11 @@ export default function SettingsScreen() {
   const {
     settings,
     updateSettings,
-    connected,
-    athlete,
+    activities,
     lastSync,
     syncing,
     syncError,
-    connectStrava,
-    disconnectStrava,
+    pastDataAllowed,
     sync,
     health,
     healthConnected,
@@ -54,8 +52,20 @@ export default function SettingsScreen() {
     healthError,
     connectHealth,
     disconnectHealth,
+    lastBackup,
+    exportBackup,
+    restoreBackup,
   } = useStore();
   const healthDays = Object.keys(health).length;
+  const [backupMessage, setBackupMessage] = useState('');
+  const [backingUp, setBackingUp] = useState(false);
+  const busy = syncing || healthSyncing;
+
+  const runBackup = (action: () => Promise<string>) => async () => {
+    setBackingUp(true);
+    setBackupMessage(await action());
+    setBackingUp(false);
+  };
 
   const date = (key: keyof Pick<Settings, 'planStart' | 'raceDate'>, mondayOnly = false) => (v: string) => {
     if (!isDateKey(v)) return 'Use the format YYYY-MM-DD.';
@@ -70,19 +80,23 @@ export default function SettingsScreen() {
     return null;
   };
 
-  const confirmDisconnect = () =>
-    Alert.alert('Disconnect Strava?', 'Your synced workouts are removed from this phone. Strava itself is not changed.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Disconnect', style: 'destructive', onPress: disconnectStrava },
-    ]);
-
   const confirmHealthDisconnect = () =>
     Alert.alert(
       'Stop reading Health Connect?',
-      'Your sleep and heart rate history is removed from this app. To take back access as well, turn it off in Health Connect.',
+      'New workouts and sleep stop coming in. Everything already in the app stays. To take back access as well, turn it off in Health Connect.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Stop reading', style: 'destructive', onPress: disconnectHealth },
+      ],
+    );
+
+  const confirmRestore = () =>
+    Alert.alert(
+      'Restore a backup?',
+      'Workouts and health days in the backup that this phone is missing are added back, and nothing here is removed. Your plan changes and settings are replaced with the ones in the backup.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Choose file', onPress: runBackup(restoreBackup) },
       ],
     );
 
@@ -93,48 +107,53 @@ export default function SettingsScreen() {
           <Text style={type.title}>Settings</Text>
 
           <Card>
-            <Text style={type.heading}>Strava</Text>
-            {connected ? (
-              <>
-                <Text style={type.body}>Connected{athlete ? ` as ${athlete}` : ''}.</Text>
-                <Text style={[type.small, syncError ? styles.error : null]}>
-                  {syncError ?? (syncing ? 'Syncing…' : lastSync ? `Last synced ${formatAgo(lastSync)}` : 'Not synced yet')}
-                </Text>
-                <Button label={syncing ? 'Syncing…' : 'Sync now'} onPress={sync} disabled={syncing} />
-                <Button label="Disconnect" variant="quiet" onPress={confirmDisconnect} />
-              </>
-            ) : (
-              <>
-                <Text style={type.body}>Your Galaxy Watch uploads to Strava through Samsung Health. Connect it to pull your workouts in.</Text>
-                <Button label="Connect Strava" onPress={connectStrava} />
-                {syncError && <Text style={styles.error}>{syncError}</Text>}
-              </>
-            )}
-          </Card>
-
-          <Card>
             <Text style={type.heading}>Health Connect</Text>
             {healthConnected ? (
               <>
-                <Text style={type.body}>Reading sleep, VO2 max and heart rate{healthDays ? ` · ${healthDays} days so far` : ''}.</Text>
-                <Text style={[type.small, healthError ? styles.error : null]}>
-                  {healthError ?? (healthSyncing ? 'Reading…' : lastHealthSync ? `Last read ${formatAgo(lastHealthSync)}` : 'Not read yet')}
+                <Text style={type.body}>
+                  Reading workouts, sleep, VO2 max and heart rate · {activities.length} workouts
+                  {healthDays ? ` and ${healthDays} days of health` : ''} saved.
                 </Text>
+                <Text style={[type.small, syncError ? styles.error : null]}>
+                  Workouts: {syncError ?? (syncing ? 'reading…' : lastSync ? `last read ${formatAgo(lastSync)}` : 'not read yet')}
+                </Text>
+                <Text style={[type.small, healthError ? styles.error : null]}>
+                  Sleep and recovery: {healthError ?? (healthSyncing ? 'reading…' : lastHealthSync ? `last read ${formatAgo(lastHealthSync)}` : 'not read yet')}
+                </Text>
+                {pastDataAllowed === false && (
+                  <Text style={type.small}>
+                    Only the last 30 days can be read. To bring in older workouts, allow past data: Choose what the app can read → Triathlon Tracker.
+                  </Text>
+                )}
+                <Button label={busy ? 'Reading…' : 'Read now'} onPress={sync} disabled={busy} />
+                <Button label="Ask for access again" variant="quiet" onPress={connectHealth} />
                 <Button label="Choose what the app can read" variant="quiet" onPress={openHealthConnect} />
                 <Button label="Stop reading" variant="quiet" onPress={confirmHealthDisconnect} />
               </>
             ) : (
               <>
                 <Text style={type.body}>
-                  Samsung Health shares your sleep, VO2 max and heart rate with Health Connect. Connect it to see sleep stages, recovery and VO2 max
-                  trends alongside your training.
+                  Your Galaxy Watch records workouts, sleep and heart rate through Samsung Health, which shares them with Health Connect. Connect it
+                  and your workouts tick themselves off here, alongside sleep, recovery and VO2 max.
                 </Text>
                 <Button label="Connect Health Connect" onPress={connectHealth} />
-                {healthError && <Text style={styles.error}>{healthError}</Text>}
+                {(healthError || syncError) && <Text style={styles.error}>{healthError ?? syncError}</Text>}
               </>
             )}
-            <Text style={type.small}>Not used yet: see what your watch writes to Health Connect for each workout.</Text>
+            <Text style={type.small}>See exactly what your watch writes to Health Connect for each workout.</Text>
             <Button label="Workout check" variant="quiet" onPress={() => router.push('/workout-check')} />
+          </Card>
+
+          <Card>
+            <Text style={type.heading}>Backup</Text>
+            <Text style={type.body}>
+              Your training history is kept only on this phone, including the workouts saved from Strava. Save a backup somewhere else, like Google
+              Drive, so a lost or reset phone doesn&apos;t lose it.
+            </Text>
+            <Text style={type.small}>{lastBackup ? `Last backup ${formatAgo(lastBackup)}` : 'No backup made yet'}</Text>
+            <Button label={backingUp ? 'Working…' : 'Back up now'} onPress={runBackup(exportBackup)} disabled={backingUp} />
+            <Button label="Restore from a backup" variant="quiet" onPress={confirmRestore} disabled={backingUp} />
+            {backupMessage !== '' && <Text style={type.small}>{backupMessage}</Text>}
           </Card>
 
           <Card>

@@ -21,7 +21,7 @@ export interface DayResult {
 /** At or above this share of the planned amount, a workout counts as done. */
 export const DONE_AT = 0.8;
 
-// When a swim reached Strava without a distance, its time is compared at this pace instead.
+// When a swim was recorded without a distance, its time is compared at this pace instead.
 const SWIM_SECONDS_PER_100M = 150;
 
 export function sportsOf(workout: PlannedWorkout): Discipline[] {
