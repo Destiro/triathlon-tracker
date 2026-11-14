@@ -107,11 +107,10 @@ test('on a rest day Today says so and points to the next workout', async () => {
   expect(router.push).toHaveBeenCalledWith({ pathname: '/day/[date]', params: { date: '2026-11-10' } });
 });
 
-test('Race shows the countdown, the course and race week', async () => {
+test('Race shows the countdown and the course, and no race week list', async () => {
   await render(<RaceScreen />);
   expect(screen.getByText('119')).toBeTruthy();
   expect(screen.getByText('90 km')).toBeTruthy();
   expect(screen.getByText('21.1 km')).toBeTruthy();
-  expect(screen.getByText('Tap a day to see the workout.')).toBeTruthy();
-  expect(screen.getByText('Fri 5')).toBeTruthy();
+  expect(screen.queryByText('Tap a day to see the workout.')).toBeNull();
 });

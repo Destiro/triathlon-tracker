@@ -17,13 +17,18 @@ function Field({ label, value, onCommit, hint, keyboard }: { label: string; valu
     setError(problem);
     if (problem) setText(value);
   };
+  // Save as soon as what's typed is valid, so switching tabs without leaving the field doesn't lose it.
+  const change = (v: string) => {
+    setText(v);
+    if (onCommit(v.trim()) === null) setError(null);
+  };
   return (
     <View style={{ gap: 4 }}>
       <Text style={type.label}>{label}</Text>
       <TextInput
         style={styles.input}
         value={text}
-        onChangeText={setText}
+        onChangeText={change}
         onBlur={commit}
         onSubmitEditing={commit}
         keyboardType={keyboard}

@@ -1,10 +1,8 @@
-import { router } from 'expo-router';
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colorOf, SPORT_LABELS, tintOf } from '../../components/sport';
 import { Card } from '../../components/ui';
-import { plannedAmount } from '../../components/WorkoutCard';
 import { daysBetween, fromKey } from '../../dates';
 import { formatClock, formatDistance, formatHoursMinutes, formatRunPace, formatSpeed, formatSwimPace } from '../../format';
 import { Confidence, LegPrediction, predictRace } from '../../prediction';
@@ -56,7 +54,6 @@ export default function RaceScreen() {
   const prediction = predictRace(activities, todayKey, { swim: metres('swim', 1900), bike: metres('bike', 90000), run: metres('run', 21100) });
 
   const weeks = Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1).map((w) => ({ week: w, phase: daysOfWeek(schedule, w)[0]?.phase ?? 'base' }));
-  const raceWeek = daysOfWeek(schedule, TOTAL_WEEKS);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -143,27 +140,6 @@ export default function RaceScreen() {
           </View>
         </Card>
 
-        <Card title="Race week" note="Tap a day to see the workout.">
-          {raceWeek.map((d) => (
-            <Pressable key={d.date} style={styles.day} onPress={() => router.push({ pathname: '/day/[date]', params: { date: d.date } })}>
-              <Text style={styles.dayName}>{fromKey(d.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' })}</Text>
-              <View style={styles.dayWorkouts}>
-                {d.workouts.length === 0 ? (
-                  <Text style={type.small}>Rest</Text>
-                ) : (
-                  d.workouts.map((w, i) => (
-                    <View key={i} style={[styles.tag, { borderLeftColor: colorOf(w.kind), backgroundColor: tintOf(w.kind) }]}>
-                      <Text style={styles.tagText}>
-                        {w.kind === 'race' ? 'Race' : w.title}
-                        {w.kind !== 'race' && plannedAmount(w) ? ` · ${plannedAmount(w)}` : ''}
-                      </Text>
-                    </View>
-                  ))
-                )}
-              </View>
-            </Pressable>
-          ))}
-        </Card>
         <View style={{ height: spacing.md }} />
       </ScrollView>
     </SafeAreaView>
@@ -188,9 +164,4 @@ const styles = StyleSheet.create({
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot: { width: 10, height: 10, borderRadius: 2 },
-  day: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line },
-  dayName: { width: 56, fontSize: 13, fontWeight: '600', color: colors.inkSoft },
-  dayWorkouts: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  tag: { borderLeftWidth: 3, borderRadius: 5, paddingVertical: 3, paddingHorizontal: 8 },
-  tagText: { fontSize: 13, color: colors.ink },
 });

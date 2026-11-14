@@ -2,7 +2,7 @@ import { Activity, mergeActivities } from './activities';
 import { toKey } from './dates';
 import { HealthByDate, mergeHealth } from './health/summary';
 import { NO_EDITS, PlanEdits } from './plan/edits';
-import type { Settings } from './store';
+import type { Settings } from './settings';
 
 // Everything you would miss if the phone were lost, as one file you keep somewhere else (Google Drive, say).
 // The app's own storage lives only on the phone, so this file is the only copy of workouts saved from Strava.
