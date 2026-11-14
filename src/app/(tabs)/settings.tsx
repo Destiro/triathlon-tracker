@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -132,6 +133,8 @@ export default function SettingsScreen() {
                 {healthError && <Text style={styles.error}>{healthError}</Text>}
               </>
             )}
+            <Text style={type.small}>Not used yet: see what your watch writes to Health Connect for each workout.</Text>
+            <Button label="Workout check" variant="quiet" onPress={() => router.push('/workout-check')} />
           </Card>
 
           <Card>
