@@ -46,6 +46,9 @@ and kept here as the same number in metres.
   in the totals.
 - **Stats**: weekly volume per sport (planned against done), fitness / fatigue / form from heart rate, aerobic
   efficiency for runs and rides, totals and best efforts.
+- **Health Connect check** (Settings): a diagnostic screen that asks for read access to Health Connect and lists what
+  your watch writes there: each recent workout with its distance, heart rate, speed and calories, plus sleep and
+  other health data. It changes nothing else; the app still gets its workouts from Strava for now.
 - **Settings**: connect Strava, the race and its date, when week 1 starts, and your max and resting heart rate.
 
 A workout counts as done at 80% of its planned time (or swim distance), as partly done below that, and as missed

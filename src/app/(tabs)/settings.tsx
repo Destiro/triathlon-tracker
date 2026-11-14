@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -79,6 +80,14 @@ export default function SettingsScreen() {
                 {syncError && <Text style={styles.error}>{syncError}</Text>}
               </>
             )}
+          </Card>
+
+          <Card>
+            <Text style={type.heading}>Health Connect</Text>
+            <Text style={type.small}>
+              See what your watch writes to Health Connect: workouts, heart rate and sleep. This is a check for now; the app still uses Strava.
+            </Text>
+            <Button label="Health Connect check" variant="quiet" onPress={() => router.push('/health-check')} />
           </Card>
 
           <Card>
