@@ -1,6 +1,9 @@
+import { Activity } from '../activities';
 import { formatClock, formatDistance } from '../format';
+import { Discipline } from '../plan/types';
+import { histogramFromStream } from '../zones';
 
-// Turns the workouts Health Connect holds into plain sentences, so you can see what your watch really writes there.
+// Turns the workouts Health Connect holds into the app's own, and into plain sentences for the workout check.
 // These functions take plain data, not the native library, so they can be tested without a phone.
 
 /**
@@ -66,6 +69,135 @@ export interface SessionData {
   speeds: { samples: { time: string; speed: { inMetersPerSecond: number } }[] }[];
   elevations: { elevation: { inMeters: number } }[];
   calories: { energy: { inKilocalories: number } }[];
+}
+
+/** Which plan sport each Health Connect exercise type counts as. Anything not listed is kept as "other". */
+const SPORTS: Record<number, Discipline> = {
+  56: 'run',
+  57: 'run',
+  8: 'bike',
+  9: 'bike',
+  73: 'swim',
+  74: 'swim',
+  70: 'gym',
+  81: 'gym',
+  13: 'gym',
+  36: 'gym',
+};
+/** The watch logs walks all day long, so they are left out rather than shown as workouts. */
+const LEFT_OUT = new Set([79]);
+
+/** The plan sport for an exercise type, or null for one that is left out. */
+export function sportOf(exerciseType: number): Discipline | 'other' | null {
+  return LEFT_OUT.has(exerciseType) ? null : (SPORTS[exerciseType] ?? 'other');
+}
+
+const pad = (n: number) => String(n).padStart(2, '0');
+
+/** A moment as local time without a zone, the way activities store their start. */
+export function localIso(msSinceEpoch: number): string {
+  const d = new Date(msSinceEpoch);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+// Below this you are standing still, so the reading doesn't count towards moving speed.
+const MOVING_MS = 0.3;
+// Fewer heart rate readings than this (a gym app writing one every ten minutes) can't say how long was spent in each zone.
+const MIN_SAMPLES_FOR_ZONES = 60;
+
+/** One Health Connect workout as an activity, or null if it is left out (a walk) or malformed. */
+export function sessionToActivity(data: SessionData): Activity | null {
+  const { session } = data;
+  const sport = sportOf(session.exerciseType);
+  const from = ms(session.startTime);
+  const to = ms(session.endTime);
+  if (sport === null || !Number.isFinite(from) || !(to > from)) return null;
+  const inside = <T extends { time: string }>(samples: T[]) => samples.filter((s) => ms(s.time) >= from && ms(s.time) <= to);
+
+  const heart = inside(data.heartRates.flatMap((r) => r.samples)).sort((a, b) => ms(a.time) - ms(b.time));
+  const moving = inside(data.speeds.flatMap((r) => r.samples))
+    .map((s) => s.speed.inMetersPerSecond)
+    .filter((v) => v > MOVING_MS);
+  const elapsedS = Math.round((to - from) / 1000);
+  const distanceM = data.distances.reduce((sum, d) => sum + d.distance.inMeters, 0);
+  // Health Connect has no moving time, so it is worked out from the speed while moving; stops at lights don't count.
+  const movingSpeed = moving.length ? mean(moving) : 0;
+  const movingS = distanceM > 0 && movingSpeed > 0 ? Math.min(elapsedS, Math.round(distanceM / movingSpeed)) : elapsedS;
+  const start = localIso(from);
+  const name = exerciseName(session.exerciseType);
+
+  return {
+    id: from,
+    name: session.title?.trim() || name,
+    sport,
+    type: name,
+    date: start.slice(0, 10),
+    start,
+    distanceM,
+    movingS,
+    elapsedS,
+    elevationM: data.elevations.reduce((sum, e) => sum + e.elevation.inMeters, 0),
+    avgHr: heart.length ? Math.round(mean(heart.map((s) => s.beatsPerMinute)) * 10) / 10 : undefined,
+    maxHr: heart.length ? Math.max(...heart.map((s) => s.beatsPerMinute)) : undefined,
+    avgSpeed: movingS > 0 ? distanceM / movingS : 0,
+    ...(sport === 'swim' ? { openWater: session.exerciseType === 73 } : {}),
+    hr:
+      heart.length >= MIN_SAMPLES_FOR_ZONES
+        ? histogramFromStream(
+            heart.map((s) => (ms(s.time) - from) / 1000),
+            heart.map((s) => s.beatsPerMinute),
+          )
+        : {},
+    source: 'health',
+  };
+}
+
+// Two records of one workout (Strava and Health Connect, or two apps writing to Health Connect) start this close together.
+const SAME_WITHIN_MS = 10 * 60 * 1000;
+const startOf = (a: Pick<Activity, 'start'>) => new Date(a.start).getTime();
+
+/** The saved activity that is this same workout: the same id, or the same sport started within ten minutes. */
+export function findSame(saved: Activity[], a: Pick<Activity, 'id' | 'sport' | 'start'>): Activity | undefined {
+  const at = startOf(a);
+  return (
+    saved.find((s) => s.id === a.id) ??
+    saved.find((s) => (s.sport === a.sport || s.sport === 'other' || a.sport === 'other') && Math.abs(startOf(s) - at) <= SAME_WITHIN_MS)
+  );
+}
+
+/**
+ * Whether a Health Connect workout is worth reading in full: it is new, it is recent enough that it may have changed,
+ * or it matches a workout saved from Strava that never got its heart rate breakdown.
+ */
+export function needsReading(session: { startTime: string; exerciseType: number }, saved: Activity[], refreshAfterMs: number): boolean {
+  const sport = sportOf(session.exerciseType);
+  if (sport === null) return false;
+  const from = ms(session.startTime);
+  const same = findSame(saved, { id: from, sport, start: localIso(from) });
+  if (!same) return true;
+  if (same.source === 'health') return from >= refreshAfterMs;
+  return same.hr === undefined;
+}
+
+/** How much a record of a workout holds, to choose between two of the same one. */
+const richness = (a: Activity) => (a.distanceM > 0 ? 2 : 0) + (a.avgHr !== undefined ? 1 : 0) + (a.hr && Object.keys(a.hr).length ? 1 : 0);
+
+/**
+ * Adds workouts read from Health Connect to the saved ones, newest first, without ever dropping a saved one. A workout
+ * that was saved from Strava stays as it is, with your corrections; Health Connect only fills in a heart rate breakdown
+ * Strava never gave. When two apps wrote the same workout, the one with more in it is kept.
+ */
+export function mergeWorkouts(saved: Activity[], incoming: Activity[]): Activity[] {
+  const out = [...saved];
+  for (const a of incoming) {
+    const same = findSame(out, a);
+    const at = same ? out.indexOf(same) : -1;
+    if (!same) out.push(a);
+    else if (same.source !== 'health') {
+      if (same.hr === undefined) out[at] = { ...same, hr: a.hr ?? {}, avgHr: same.avgHr ?? a.avgHr, maxHr: same.maxHr ?? a.maxHr };
+    } else if (same.id === a.id || richness(a) > richness(same)) out[at] = a;
+  }
+  return out.sort((a, b) => b.start.localeCompare(a.start));
 }
 
 export interface SessionSummary {

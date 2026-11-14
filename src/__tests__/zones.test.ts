@@ -1,6 +1,5 @@
 import { PLAN } from '../plan/data';
-import { histogramFromResponse, histogramFromStream, shareInZones, targetZones, wantsZones, zoneIndex, zoneSeconds, zoneVerdict } from '../zones';
-import { activity } from './helpers';
+import { histogramFromStream, shareInZones, targetZones, zoneIndex, zoneSeconds, zoneVerdict } from '../zones';
 
 const week3 = PLAN[2].days;
 
@@ -27,36 +26,6 @@ describe('heart rate from a stream', () => {
 
   it('skips samples with no heart rate', () => {
     expect(histogramFromStream([0, 1, 2], [0, 140, 140])).toEqual({ 140: 2 });
-  });
-
-  it('reads Strava answering with a list of streams or with an object keyed by name', () => {
-    const asList = [
-      { type: 'time', data: [0, 1, 2] },
-      { type: 'heartrate', data: [130, 130, 130] },
-    ];
-    const asObject = { time: { data: [0, 1, 2] }, heartrate: { data: [130, 130, 130] } };
-    expect(histogramFromResponse(asList)).toEqual({ 130: 3 });
-    expect(histogramFromResponse(asObject)).toEqual({ 130: 3 });
-  });
-
-  it('gives null when heart rate is missing or malformed', () => {
-    expect(histogramFromResponse([{ type: 'time', data: [0, 1] }])).toBeNull();
-    expect(histogramFromResponse({ time: { data: [0] }, heartrate: { data: ['x'] } })).toBeNull();
-    expect(histogramFromResponse(null)).toBeNull();
-  });
-});
-
-describe('wantsZones', () => {
-  it('is true for a recorded workout with heart rate and no breakdown yet', () => {
-    expect(wantsZones(activity({ id: 1, sport: 'run', date: '2026-11-02', movingS: 1800, avgHr: 140 }))).toBe(true);
-  });
-
-  it('is false once it has one (even an empty one), without heart rate, when very short, or not a tracked sport', () => {
-    const base = { id: 1, date: '2026-11-02', movingS: 1800, avgHr: 140 } as const;
-    expect(wantsZones(activity({ ...base, sport: 'run', hr: {} }))).toBe(false);
-    expect(wantsZones(activity({ ...base, sport: 'run', avgHr: undefined }))).toBe(false);
-    expect(wantsZones(activity({ ...base, sport: 'run', movingS: 120 }))).toBe(false);
-    expect(wantsZones(activity({ ...base, sport: 'other' }))).toBe(false);
   });
 });
 

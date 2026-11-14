@@ -1,4 +1,3 @@
-import { Activity } from './activities';
 import { PlannedWorkout } from './plan/types';
 
 /** Where each heart rate zone starts, as a share of max heart rate. Zone 1 is everything below the second number. */
@@ -33,28 +32,6 @@ export function histogramFromStream(time: number[], heartRate: number[]): Record
   }
   return hist;
 }
-
-/**
- * Reads Strava's answer to a streams request for time and heart rate. Strava documents a list of streams but sends an
- * object keyed by name when asked to, so both are accepted. Returns null when either stream is missing.
- */
-export function histogramFromResponse(body: unknown): Record<number, number> | null {
-  const dataOf = (key: string): number[] | null => {
-    const found = Array.isArray(body)
-      ? body.find((s) => s && typeof s === 'object' && (s as { type?: unknown }).type === key)
-      : body && typeof body === 'object'
-        ? (body as Record<string, unknown>)[key]
-        : undefined;
-    const data = found && typeof found === 'object' ? (found as { data?: unknown }).data : undefined;
-    return Array.isArray(data) && data.every((v) => typeof v === 'number') ? (data as number[]) : null;
-  };
-  const time = dataOf('time');
-  const heartRate = dataOf('heartrate');
-  return time && heartRate ? histogramFromStream(time, heartRate) : null;
-}
-
-/** Whether this activity has a heart rate reading but no breakdown yet, so it is worth fetching one. */
-export const wantsZones = (a: Activity): boolean => a.avgHr !== undefined && a.hr === undefined && a.sport !== 'other' && a.movingS >= 300;
 
 // What the plan's words for effort mean in zones. Change these to change what counts as on target.
 const INTENSITY_ZONES: Record<string, [number, number]> = {

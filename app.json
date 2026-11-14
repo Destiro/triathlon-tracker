@@ -38,8 +38,6 @@
       "expo-router",
       "expo-font",
       "expo-asset",
-      "expo-secure-store",
-      "expo-web-browser",
       "react-native-health-connect",
       [
         "expo-build-properties",
@@ -48,7 +46,8 @@
             "minSdkVersion": 26
           }
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "scheme": "triathlontracker",
     "experiments": {

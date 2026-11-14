@@ -1,11 +1,15 @@
 import { Discipline } from './plan/types';
 
-/** A workout recorded on the watch, as it came through Strava. Only what the app uses is kept. */
+/**
+ * A workout recorded on the watch. New ones are read from Health Connect; the ones from before the switch came through
+ * Strava and are kept exactly as they were saved. Only what the app uses is kept.
+ */
 export interface Activity {
+  /** Strava's id for the older ones; the start time in milliseconds for Health Connect ones. */
   id: number;
   name: string;
   sport: Discipline | 'other';
-  /** Strava's own type, such as "Run" or "VirtualRide". */
+  /** What kind of workout the source called it, such as "Running" or Strava's "VirtualRide". */
   type: string;
   /** Local date, YYYY-MM-DD. */
   date: string;
@@ -20,63 +24,17 @@ export interface Activity {
   /** Metres per second. */
   avgSpeed: number;
   avgCadence?: number;
-  /** Swims only: recorded with a GPS start, so swum outdoors. A pool swim has none. You can correct it by hand. */
+  /** Swims only: swum outdoors. You can correct it by hand. */
   openWater?: boolean;
-  /** Seconds spent at each heart rate, by beats per minute. Empty when Strava had nothing. Filled in after sync. */
+  /** Seconds spent at each heart rate, by beats per minute. Empty when there was nothing to work it out from. */
   hr?: Record<number, number>;
-}
-
-const SPORTS: Record<string, Discipline> = {
-  Swim: 'swim',
-  Ride: 'bike',
-  VirtualRide: 'bike',
-  GravelRide: 'bike',
-  MountainBikeRide: 'bike',
-  Run: 'run',
-  TrailRun: 'run',
-  VirtualRun: 'run',
-  WeightTraining: 'gym',
-  Workout: 'gym',
-  Crossfit: 'gym',
-  HighIntensityIntervalTraining: 'gym',
-};
-
-const num = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
-
-/** Turns one entry from Strava's activity list into an Activity, or null if it isn't usable. */
-export function toActivity(raw: Record<string, unknown>): Activity | null {
-  const id = num(raw.id);
-  const start = typeof raw.start_date_local === 'string' ? raw.start_date_local : '';
-  if (id === undefined || !/^\d{4}-\d{2}-\d{2}T/.test(start)) return null;
-
-  const type = typeof raw.sport_type === 'string' ? raw.sport_type : typeof raw.type === 'string' ? raw.type : 'Workout';
-  const movingS = num(raw.moving_time) ?? 0;
-  const distanceM = num(raw.distance) ?? 0;
-  const hasHr = raw.has_heartrate !== false;
-
-  return {
-    id,
-    name: typeof raw.name === 'string' ? raw.name : type,
-    sport: SPORTS[type] ?? 'other',
-    type,
-    // Strava writes local time with a Z on the end; the date part is the local date.
-    date: start.slice(0, 10),
-    start: start.replace(/Z$/, ''),
-    distanceM,
-    movingS,
-    elapsedS: num(raw.elapsed_time) ?? movingS,
-    elevationM: num(raw.total_elevation_gain) ?? 0,
-    avgHr: hasHr ? num(raw.average_heartrate) : undefined,
-    maxHr: hasHr ? num(raw.max_heartrate) : undefined,
-    avgSpeed: num(raw.average_speed) ?? (movingS > 0 ? distanceM / movingS : 0),
-    avgCadence: num(raw.average_cadence),
-    ...(SPORTS[type] === 'swim' ? { openWater: Array.isArray(raw.start_latlng) && raw.start_latlng.length === 2 } : {}),
-  };
+  /** Where it came from. Missing on everything saved before the switch, which all came from Strava. */
+  source?: 'health';
 }
 
 /**
- * Adds new activities to the saved ones, replacing any with the same id, newest first. A fresh copy from Strava has
- * no heart rate breakdown, so the one already saved is kept rather than fetched again.
+ * Adds new activities to the saved ones, replacing any with the same id, newest first. A fresh copy without a heart
+ * rate breakdown keeps the one already saved.
  */
 export function mergeActivities(saved: Activity[], incoming: Activity[]): Activity[] {
   const byId = new Map(saved.map((a) => [a.id, a]));

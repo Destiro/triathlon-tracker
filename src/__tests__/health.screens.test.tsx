@@ -13,8 +13,10 @@ jest.mock('@expo/vector-icons', () => ({ MaterialCommunityIcons: () => null }));
 jest.mock('react-native-health-connect', () => ({ openHealthConnectSettings: jest.fn(), SdkAvailabilityStatus: {} }));
 
 let mockConnected = true;
+let mockPastData = true;
 beforeEach(() => {
   mockConnected = true;
+  mockPastData = true;
   jest.clearAllMocks();
 });
 
@@ -35,7 +37,10 @@ jest.mock('../store', () => {
     schedule: buildSchedule(settings.planStart, settings.raceDate, settings.raceName),
     activities: [],
     activitiesByDate: new Map(),
-    connected: false,
+    sync: jest.fn(),
+    lastBackup: null,
+    exportBackup: jest.fn(async () => 'Backup made. Keep it somewhere off this phone, like Google Drive.'),
+    restoreBackup: jest.fn(async () => ''),
     syncing: false,
     syncError: null,
     lastSync: null,
@@ -49,11 +54,11 @@ jest.mock('../store', () => {
   };
   return {
     useTodayKey: () => '2026-11-10',
-    useStore: () => ({ ...store, healthConnected: mockConnected }),
+    useStore: () => ({ ...store, healthConnected: mockConnected, pastDataAllowed: mockPastData }),
   };
 });
 
-test('Stats shows sleep, recovery and VO2 max even before Strava is connected', async () => {
+test('Stats shows sleep, recovery and VO2 max even with no workouts yet', async () => {
   await render(<StatsScreen />);
   expect(screen.getByText('Sleep')).toBeTruthy();
   expect(screen.getByText('Recovery')).toBeTruthy();
@@ -65,9 +70,41 @@ test('Stats shows sleep, recovery and VO2 max even before Strava is connected', 
 test('Settings shows Health Connect as connected, with a way to manage access', async () => {
   const { openHealthConnectSettings } = jest.requireMock('react-native-health-connect');
   await render(<SettingsScreen />);
-  expect(screen.getByText(/11 days so far/)).toBeTruthy();
+  expect(screen.getByText(/0 workouts and 11 days of health saved/)).toBeTruthy();
   await fireEvent.press(screen.getByText('Choose what the app can read'));
   expect(openHealthConnectSettings).toHaveBeenCalled();
+});
+
+test('Settings has no Strava sign-in left in it', async () => {
+  await render(<SettingsScreen />);
+  expect(screen.queryByText('Strava')).toBeNull();
+  expect(screen.queryByText('Connect Strava')).toBeNull();
+});
+
+test('Settings makes a backup and says where to keep it', async () => {
+  const { useStore } = jest.requireMock('../store');
+  await render(<SettingsScreen />);
+  expect(screen.getByText('No backup made yet')).toBeTruthy();
+  await fireEvent.press(screen.getByText('Back up now'));
+  expect(useStore().exportBackup).toHaveBeenCalled();
+  expect(await screen.findByText('Backup made. Keep it somewhere off this phone, like Google Drive.')).toBeTruthy();
+});
+
+test('Settings asks before restoring a backup', async () => {
+  const { Alert } = jest.requireActual('react-native');
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  const { useStore } = jest.requireMock('../store');
+  await render(<SettingsScreen />);
+  await fireEvent.press(screen.getByText('Restore from a backup'));
+  expect(alert).toHaveBeenCalledWith('Restore a backup?', expect.stringContaining('nothing here is removed'), expect.any(Array));
+  expect(useStore().restoreBackup).not.toHaveBeenCalled();
+  alert.mockRestore();
+});
+
+test('Settings warns when only the last 30 days can be read', async () => {
+  mockPastData = false;
+  await render(<SettingsScreen />);
+  expect(screen.getByText(/Only the last 30 days can be read/)).toBeTruthy();
 });
 
 test('Settings offers to connect Health Connect', async () => {

@@ -19,7 +19,7 @@ import { useStore, useTodayKey } from '../../store';
 import { colors, radius, spacing, type } from '../../theme';
 
 export default function TodayScreen() {
-  const { settings, schedule, activities, activitiesByDate, connected, syncing, sync, lastSync, syncError, connectStrava, health, healthSyncing } = useStore();
+  const { settings, schedule, activities, activitiesByDate, healthConnected, syncing, sync, lastSync, syncError, connectHealth, health, healthSyncing } = useStore();
   const todayKey = useTodayKey();
   const today = schedule.get(todayKey);
   const daysToRace = daysBetween(fromKey(todayKey), fromKey(settings.raceDate));
@@ -57,18 +57,19 @@ export default function TodayScreen() {
 
         <Text style={type.title}>{formatDay(fromKey(todayKey))}</Text>
 
-        {!connected ? (
+        {!healthConnected ? (
           <Card>
-            <Text style={type.heading}>Connect Strava</Text>
+            <Text style={type.heading}>Connect Health Connect</Text>
             <Text style={type.body}>
-              Your watch already syncs to Strava. Connect it and your workouts tick themselves off here, with no start or stop buttons.
+              Your watch already shares workouts with Health Connect through Samsung Health. Connect it and your workouts tick themselves off here,
+              with no start or stop buttons.
             </Text>
-            <Button label="Connect Strava" onPress={connectStrava} />
+            <Button label="Connect Health Connect" onPress={connectHealth} />
             {syncError && <Text style={styles.error}>{syncError}</Text>}
           </Card>
         ) : (
           <Text style={[type.small, syncError ? styles.error : null]}>
-            {syncError ?? (syncing ? 'Syncing with Strava…' : lastSync ? `Synced ${formatAgo(lastSync)} · pull down to refresh` : 'Not synced yet')}
+            {syncError ?? (syncing ? 'Reading Health Connect…' : lastSync ? `Synced ${formatAgo(lastSync)} · pull down to refresh` : 'Not synced yet')}
           </Text>
         )}
 

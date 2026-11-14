@@ -1,4 +1,5 @@
-import { byDate, toActivity } from '../activities';
+import { byDate } from '../activities';
+import { sportOf } from '../health/workouts';
 import { matchDay } from '../matching';
 import { addSessions, applyEdits, NO_EDITS, removeSession, sessionDates, sessionIdOf, setMove } from '../plan/edits';
 import { buildSchedule } from '../plan/schedule';
@@ -106,9 +107,9 @@ describe('your own sessions', () => {
 });
 
 describe('gym on the watch', () => {
-  it('reads Strava strength types as gym', () => {
-    const a = toActivity({ id: 5, name: 'Legs', sport_type: 'WeightTraining', start_date_local: '2026-11-05T18:00:00Z', moving_time: 2700 });
-    expect(a?.sport).toBe('gym');
+  it('reads Health Connect strength types as gym, and leaves walks out', () => {
+    expect([sportOf(70), sportOf(81), sportOf(36)]).toEqual(['gym', 'gym', 'gym']);
+    expect(sportOf(79)).toBeNull();
   });
 
   const edits = addSessions(NO_EDITS, { date: THURSDAY, title: 'Gym', minutes: 45, repeatWeekly: false }, RACE, makeId);
