@@ -9,24 +9,9 @@ import { HealthByDate, mergeHealth } from './health/summary';
 import { mergeWorkouts, needsReading } from './health/workouts';
 import { addSessions, applyEdits, NewSession, NO_EDITS, PlanEdits, removeSession, setMove } from './plan/edits';
 import { buildSchedule, Schedule } from './plan/schedule';
+import { DEFAULT_SETTINGS, loadSettings, Settings } from './settings';
 
-export interface Settings {
-  /** The Monday that plan week 1 starts on. */
-  planStart: string;
-  raceDate: string;
-  raceName: string;
-  /** Used to turn heart rate into training load. */
-  maxHr: number;
-  restHr: number;
-}
-
-const DEFAULT_SETTINGS: Settings = {
-  planStart: '2026-10-19',
-  raceDate: '2027-03-05',
-  raceName: 'Ironman 70.3 New Zealand',
-  maxHr: 190,
-  restHr: 55,
-};
+export type { Settings } from './settings';
 
 const STORAGE_KEY = 'triathlon-tracker/v1';
 const DAY_MS = 86400000;
@@ -122,7 +107,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (raw) {
           const saved = JSON.parse(raw) as Partial<Saved>;
-          setSettings({ ...DEFAULT_SETTINGS, ...saved.settings });
+          setSettings(loadSettings(saved.settings));
           setStored(saved.activities ?? []);
           setWaterOverrides(saved.waterOverrides ?? {});
           setLastSync(saved.lastSync ?? null);
@@ -282,7 +267,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (text === null) return '';
       const { data } = readBackup(text);
       const restored = restoreInto(backupData(), data);
-      setSettings({ ...DEFAULT_SETTINGS, ...restored.settings });
+      setSettings(loadSettings(restored.settings));
       setStored(restored.activities);
       setEdits(restored.edits);
       setWaterOverrides(restored.waterOverrides);

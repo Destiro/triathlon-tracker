@@ -23,7 +23,7 @@ and kept here as the same number in metres.
 - **Plan**: a month calendar. Each day has a dot per workout in its sport's colour, solid once done. Each week
   shows its planned hours, and finished weeks fade. Tap a day to see its workouts underneath, or open it to move a
   workout or see what the watch recorded.
-- **Race**: the countdown, the course, the road through the plan phases, race week, and a predicted finish. The
+- **Race**: the countdown, the course, the road through the plan phases, and a predicted finish. The
   prediction uses your last six weeks: the swim is the average of your three fastest swims over 1 km (pool swims
   are slowed 10% for open water; open water swims are used as they are), the bike is the average speed of your
   three longest rides (15 km and 45 minutes or more), the run is the average pace of your three longest runs (4 km
