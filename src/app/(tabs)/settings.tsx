@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card } from '../../components/ui';
+import { PlaceField } from '../../components/WeatherCards';
 import { fromKey, isDateKey } from '../../dates';
 import { openSettings as openHealthConnect } from '../../health/connect';
 import { formatAgo } from '../../format';
@@ -61,6 +62,12 @@ export default function SettingsScreen() {
     lastBackup,
     exportBackup,
     restoreBackup,
+    weather,
+    weatherUpdating,
+    weatherError,
+    setPlace,
+    clearPlace,
+    refreshWeather,
   } = useStore();
   const healthDays = Object.keys(health).length;
   const [backupMessage, setBackupMessage] = useState('');
@@ -77,6 +84,12 @@ export default function SettingsScreen() {
     if (!isDateKey(v)) return 'Use the format YYYY-MM-DD.';
     if (mondayOnly && fromKey(v).getDay() !== 1) return 'Week 1 starts on a Monday.';
     updateSettings({ [key]: v });
+    return null;
+  };
+  const limit = (key: 'rainLimit' | 'windLimit' | 'waveLimit' | 'wetsuitBelow', min: number, max: number, unit: string) => (v: string) => {
+    const n = Number(v);
+    if (v === '' || !Number.isFinite(n) || n < min || n > max) return `Enter a number from ${min} to ${max} ${unit}.`;
+    updateSettings({ [key]: n });
     return null;
   };
   const heartRate = (key: 'maxHr' | 'restHr', min: number, max: number) => (v: string) => {
@@ -156,6 +169,40 @@ export default function SettingsScreen() {
             )}
             <Text style={type.small}>See exactly what your watch writes to Health Connect for each workout.</Text>
             <Button label="Workout check" variant="quiet" onPress={() => router.push('/workout-check')} />
+          </Card>
+
+          <Card>
+            <Text style={type.heading}>Weather</Text>
+            <Text style={type.small}>
+              The forecast for the next 16 days, to decide between outside and indoors. It comes from Open-Meteo, which is free. Only the place you set
+              here is sent to it.
+            </Text>
+            <PlaceField
+              label="Your town"
+              place={settings.homePlace}
+              hint="Not set. Weather shows on the Plan calendar once it is."
+              onFind={(name) => setPlace('home', name)}
+              onClear={() => clearPlace('home')}
+            />
+            <PlaceField
+              label="Ocean swim beach"
+              place={settings.beachPlace}
+              hint="Not set. Adds sea temperature and waves on days with a swim."
+              onFind={(name) => setPlace('beach', name)}
+              onClear={() => clearPlace('beach')}
+            />
+            {(settings.homePlace || settings.beachPlace) && (
+              <>
+                <Text style={[type.small, weatherError ? styles.error : null]}>
+                  {weatherError ?? (weatherUpdating ? 'Updating…' : weather ? `Forecast updated ${formatAgo(weather.fetchedAt)}` : 'Not fetched yet')}
+                </Text>
+                <Button label={weatherUpdating ? 'Updating…' : 'Update forecast'} variant="quiet" onPress={refreshWeather} disabled={weatherUpdating} />
+              </>
+            )}
+            <Field label="Think indoor when rain is likelier than (%)" value={String(settings.rainLimit)} keyboard="numeric" onCommit={limit('rainLimit', 0, 100, '%')} />
+            <Field label="Think indoor when wind is above (km/h)" value={String(settings.windLimit)} keyboard="numeric" onCommit={limit('windLimit', 5, 100, 'km/h')} />
+            <Field label="Think pool when waves are above (m)" value={String(settings.waveLimit)} keyboard="numeric" onCommit={limit('waveLimit', 0.2, 5, 'm')} />
+            <Field label="Wetsuit when the sea is under (°)" value={String(settings.wetsuitBelow)} keyboard="numeric" onCommit={limit('wetsuitBelow', 8, 30, '°')} />
           </Card>
 
           <Card>

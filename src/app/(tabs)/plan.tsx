@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MonthGrid } from '../../components/MonthGrid';
 import { AddSessionSheet } from '../../components/PlanSheets';
+import { DayWeatherCard, OceanSwimCard } from '../../components/WeatherCards';
 import { SPORT_LABELS, SportBadge, colorOf } from '../../components/sport';
 import { Card } from '../../components/ui';
 import { plannedAmount, STATUS } from '../../components/WorkoutCard';
@@ -17,7 +18,7 @@ import { colors, radius, spacing, type } from '../../theme';
 const LEGEND = ['swim', 'bike', 'run', 'brick', 'gym'] as const;
 
 export default function PlanScreen() {
-  const { schedule, activitiesByDate, settings, addSession } = useStore();
+  const { schedule, activitiesByDate, settings, addSession, weather } = useStore();
   const todayKey = useTodayKey();
   const home = schedule.has(todayKey) ? todayKey : settings.planStart;
   const [selected, setSelected] = useState(home);
@@ -70,6 +71,8 @@ export default function PlanScreen() {
           todayKey={todayKey}
           selected={selected}
           onSelect={setSelected}
+          weather={weather?.home}
+          limits={settings}
         />
 
         <View style={styles.legend}>
@@ -122,6 +125,12 @@ export default function PlanScreen() {
                 </Pressable>
               );
             })}
+            {weather && (
+              <DayWeatherCard day={weather.home[selected]} workouts={result.results.map((r) => r.workout)} limits={settings} updatedAt={weather.fetchedAt} />
+            )}
+            {weather && settings.beachPlace && result.results.some((r) => r.workout.kind === 'swim') && (
+              <OceanSwimCard place={settings.beachPlace} weather={weather.beach[selected]} sea={weather.sea[selected]} limits={settings} />
+            )}
             {result.extras.length > 0 && <Text style={type.small}>Not in the plan: {result.extras.map((a) => a.name).join(', ')}</Text>}
 
             <Pressable onPress={() => setAdding(true)} style={styles.add} accessibilityRole="button">

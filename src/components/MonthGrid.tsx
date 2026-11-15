@@ -3,6 +3,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Activity } from '../activities';
 import { formatDay, fromKey, monthGrid, toKey } from '../dates';
 import { Schedule } from '../plan/schedule';
+import { DayWeather, describeCode, isOutdoor, Limits, outdoorCall } from '../weather';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { dayResult, weekMinutes } from '../stats';
 import { colors, radius, spacing } from '../theme';
 import { colorOf } from './sport';
@@ -17,13 +19,17 @@ interface Props {
   todayKey: string;
   selected: string;
   onSelect: (date: string) => void;
+  /** The forecast by day, when a town is set. A day with a ride or run that is not worth doing outside is marked. */
+  weather?: Record<string, DayWeather>;
+  limits?: Limits;
 }
 
 /**
  * A month as whole weeks, Monday first. Each day shows one dot per workout in its sport's colour: solid once done,
  * faded while still to do. The column on the left names the plan week and its planned hours. Finished weeks fade back.
  */
-export function MonthGrid({ month, schedule, activitiesByDate, todayKey, selected, onSelect }: Props) {
+export function MonthGrid({ month, schedule, activitiesByDate, todayKey, selected, onSelect, weather, limits }: Props) {
+  const hasWeather = weather !== undefined && Object.keys(weather).length > 0;
   const days = monthGrid(month);
   const weeks = Array.from({ length: days.length / 7 }, (_, i) => days.slice(i * 7, i * 7 + 7));
 
@@ -56,6 +62,8 @@ export function MonthGrid({ month, schedule, activitiesByDate, todayKey, selecte
               const day = schedule.get(key);
               const results = day ? dayResult(schedule, activitiesByDate, key, todayKey).results : [];
               const inMonth = d.getMonth() === month.getMonth();
+              const forecast = weather?.[key];
+              const wet = forecast && limits && results.some((r) => isOutdoor(r.workout.kind)) ? !outdoorCall(forecast, limits).ok : false;
               return (
                 <Pressable
                   key={key}
@@ -63,11 +71,21 @@ export function MonthGrid({ month, schedule, activitiesByDate, todayKey, selecte
                   onPress={() => onSelect(key)}
                   accessibilityLabel={formatDay(fromKey(key))}
                   accessibilityState={{ selected: key === selected, disabled: !day }}
-                  style={[styles.cell, key === selected && styles.cellSelected, key === todayKey && styles.cellToday, !inMonth && { opacity: 0.45 }]}
+                  style={[styles.cell, hasWeather && styles.cellTall, key === selected && styles.cellSelected, key === todayKey && styles.cellToday, !inMonth && { opacity: 0.45 }]}
                 >
                   <Text style={[styles.date, key === todayKey && { color: colors.accent, fontWeight: '800' }, !day && { color: colors.inkFaint }]}>
                     {d.getDate()}
                   </Text>
+                  {hasWeather && (
+                    <View style={styles.weather} accessibilityLabel={forecast ? `${describeCode(forecast.code).label}, ${Math.round(forecast.maxC)} degrees` : undefined}>
+                      {forecast && (
+                        <>
+                          <MaterialCommunityIcons name={describeCode(forecast.code).icon as never} size={13} color={wet ? colors.warning : colors.inkSoft} />
+                          <Text style={[styles.temp, wet && { color: colors.warning }]}>{Math.round(forecast.maxC)}°</Text>
+                        </>
+                      )}
+                    </View>
+                  )}
                   <View style={styles.dots}>
                     {results.map((r, i) => {
                       const colour = colorOf(r.workout.kind);
@@ -110,6 +128,9 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: 'transparent',
   },
+  cellTall: { height: 66 },
+  weather: { flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: 14 },
+  temp: { fontSize: 10, color: colors.inkSoft, fontFamily: 'monospace' },
   cellSelected: { backgroundColor: colors.accentSoft },
   cellToday: { borderColor: colors.accent },
   date: { fontSize: 12, color: colors.inkSoft, fontFamily: 'monospace' },
