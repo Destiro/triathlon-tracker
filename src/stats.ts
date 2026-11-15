@@ -2,7 +2,7 @@ import { Activity } from './activities';
 import { addDays, fromKey, toKey } from './dates';
 import { DayResult, matchDay, statusScore, WorkoutResult } from './matching';
 import { daysOfWeek, Schedule } from './plan/schedule';
-import { Discipline, Sport } from './plan/types';
+import { Discipline, PlannedWorkout, Sport } from './plan/types';
 
 export const SPORTS: Sport[] = ['swim', 'bike', 'run'];
 
@@ -47,6 +47,12 @@ export function weekVolume(schedule: Schedule, activitiesByDate: Map<string, Act
 
 // Swims are planned by distance. At an easy pool pace of about 2:30 per 100 m, this is how long they take.
 const SWIM_MINUTES_PER_100M = 2.5;
+
+/** How long a planned workout takes, in minutes. Swims are turned into time at an easy pool pace; bricks add their legs. */
+export function plannedMinutes(w: PlannedWorkout): number {
+  if (w.legs) return w.legs.reduce((sum, leg) => sum + (leg.sport === 'swim' ? ((leg.metres ?? 0) / 100) * SWIM_MINUTES_PER_100M : (leg.minutes ?? 0)), 0);
+  return w.kind === 'swim' ? ((w.metres ?? 0) / 100) * SWIM_MINUTES_PER_100M : (w.minutes ?? 0);
+}
 
 /** Hours of training planned for one plan week, as minutes. Swims are turned into time at an easy pool pace. */
 export function weekMinutes(schedule: Schedule, week: number): number {
@@ -129,7 +135,7 @@ export interface HeartRates {
 }
 
 // Load for a workout with no heart rate, per minute: about what a steady aerobic session scores.
-const LOAD_PER_MINUTE_WITHOUT_HR = 1.2;
+export const LOAD_PER_MINUTE_WITHOUT_HR = 1.2;
 
 /**
  * Training load (Banister TRIMP): minutes, weighted by how hard the heart was working. An hour at an easy
@@ -153,8 +159,13 @@ export interface LoadPoint {
   form: number;
 }
 
-const FITNESS_DAYS = 42;
-const FATIGUE_DAYS = 7;
+export const FITNESS_DAYS = 42;
+export const FATIGUE_DAYS = 7;
+
+/** In words, what a form number means. The same bands are used for today and for race day. */
+export function formState(form: number): string {
+  return form > 5 ? 'Fresh: well rested.' : form > -10 ? 'Balanced: absorbing the training.' : form > -25 ? 'Tired: normal in a hard block.' : 'Very tired: watch for overreaching.';
+}
 
 /** Daily load and the fitness / fatigue / form curves from `startKey` to `endKey`, both included. */
 export function loadSeries(activities: Activity[], startKey: string, endKey: string, hr: HeartRates): LoadPoint[] {

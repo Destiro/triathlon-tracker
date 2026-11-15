@@ -33,6 +33,10 @@ jest.mock('../store', () => {
     activities,
     activitiesByDate: byDate(activities),
     healthConnected: true,
+    checklist: { done: { 'swim.0': true }, extra: [] },
+    toggleChecklist: jest.fn(),
+    addChecklist: jest.fn(),
+    removeChecklist: jest.fn(),
     lastSync: Date.now(),
     syncing: false,
     syncError: null,
@@ -113,4 +117,19 @@ test('Race shows the countdown and the course, and no race week list', async () 
   expect(screen.getByText('90 km')).toBeTruthy();
   expect(screen.getByText('21.1 km')).toBeTruthy();
   expect(screen.queryByText('Tap a day to see the workout.')).toBeNull();
+});
+
+test('Race shows a pacing plan, how ready the distances are, and the checklist', async () => {
+  await render(<RaceScreen />);
+  expect(screen.getByText('Your pacing plan')).toBeTruthy();
+  expect(screen.getByText('Ready for the distance?')).toBeTruthy();
+  expect(screen.getByText('Race checklist')).toBeTruthy();
+  expect(screen.getByText(/^1 of [0-9]+ ticked[.]$/)).toBeTruthy();
+});
+
+test('ticking a checklist item on Race passes its id to the store', async () => {
+  const { useStore } = jest.requireMock('../store');
+  await render(<RaceScreen />);
+  await fireEvent.press(screen.getByLabelText('Helmet'));
+  expect(useStore().toggleChecklist).toHaveBeenCalledWith('bike.0');
 });

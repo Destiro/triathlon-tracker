@@ -2,10 +2,15 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colorOf, SPORT_LABELS, tintOf } from '../../components/sport';
+import { ChecklistCard, FormCard, PacingCard, ReadinessCard } from '../../components/RaceCards';
 import { Card } from '../../components/ui';
 import { daysBetween, fromKey } from '../../dates';
 import { formatClock, formatDistance, formatHoursMinutes, formatRunPace, formatSpeed, formatSwimPace } from '../../format';
+import { pacingPlan } from '../../pacing';
 import { Confidence, LegPrediction, predictRace } from '../../prediction';
+import { projectForm } from '../../projection';
+import { longestSoFar } from '../../readiness';
+import { highestHeartRate } from '../../stats';
 import { daysOfWeek, PHASE_LABELS, TOTAL_WEEKS } from '../../plan/schedule';
 import { Phase, Sport } from '../../plan/types';
 import { useStore, useTodayKey } from '../../store';
@@ -43,7 +48,7 @@ const PHASE_COLORS: Record<Phase, string> = {
 };
 
 export default function RaceScreen() {
-  const { settings, schedule, activities } = useStore();
+  const { settings, schedule, activities, checklist, toggleChecklist, addChecklist, removeChecklist } = useStore();
   const todayKey = useTodayKey();
   const daysToGo = daysBetween(fromKey(todayKey), fromKey(settings.raceDate));
   const currentWeek = schedule.get(todayKey)?.week ?? (todayKey < settings.planStart ? 0 : TOTAL_WEEKS + 1);
@@ -51,7 +56,12 @@ export default function RaceScreen() {
   const legs = race?.legs ?? [];
   const totalM = legs.reduce((sum, l) => sum + (l.metres ?? 0), 0);
   const metres = (sport: Sport, fallback: number) => legs.find((l) => l.sport === sport)?.metres ?? fallback;
-  const prediction = predictRace(activities, todayKey, { swim: metres('swim', 1900), bike: metres('bike', 90000), run: metres('run', 21100) });
+  const raceDistances = { swim: metres('swim', 1900), bike: metres('bike', 90000), run: metres('run', 21100) };
+  const prediction = predictRace(activities, todayKey, raceDistances);
+  const maxHr = Math.max(settings.maxHr, highestHeartRate(activities));
+  const pacing = pacingPlan(prediction, maxHr);
+  const longest = longestSoFar(activities, todayKey, raceDistances);
+  const projection = projectForm(activities, schedule, activities.length ? activities[activities.length - 1].date : todayKey, todayKey, settings.raceDate, { maxHr, restHr: settings.restHr });
 
   const weeks = Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1).map((w) => ({ week: w, phase: daysOfWeek(schedule, w)[0]?.phase ?? 'base' }));
 
@@ -105,6 +115,10 @@ export default function RaceScreen() {
           </Card>
         )}
 
+        {daysToGo > 0 && <PacingCard plan={pacing} />}
+        {daysToGo > 0 && <ReadinessCard longest={longest} race={raceDistances} />}
+        <FormCard projection={projection} />
+
         {legs.length > 0 && (
           <Card title="The course" note={`${formatDistance(totalM)} in all`}>
             {legs.map((l) => (
@@ -140,6 +154,7 @@ export default function RaceScreen() {
           </View>
         </Card>
 
+        <ChecklistCard state={checklist} onToggle={toggleChecklist} onAdd={addChecklist} onRemove={removeChecklist} />
         <View style={{ height: spacing.md }} />
       </ScrollView>
     </SafeAreaView>

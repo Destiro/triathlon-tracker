@@ -9,7 +9,7 @@ import { Card, Empty } from '../../components/ui';
 import { addDays, fromKey, toKey } from '../../dates';
 import { formatClock, formatDistance, formatMinutes, formatSwimPace } from '../../format';
 import { TOTAL_WEEKS } from '../../plan/schedule';
-import { efficiency, highestHeartRate, loadSeries, records, SPORTS, swimsByWater, totals, unitOf, weekVolume } from '../../stats';
+import { efficiency, formState, highestHeartRate, loadSeries, records, SPORTS, swimsByWater, totals, unitOf, weekVolume } from '../../stats';
 import { useStore, useTodayKey } from '../../store';
 import { colors, spacing, type } from '../../theme';
 
@@ -51,8 +51,6 @@ export default function StatsScreen() {
   const best = records(activities, settings.planStart);
   const water = swimsByWater(activities, settings.planStart);
 
-  const formState =
-    now.form > 5 ? 'Fresh: well rested.' : now.form > -10 ? 'Balanced: absorbing the training.' : now.form > -25 ? 'Tired: normal in a hard block.' : 'Very tired: watch for overreaching.';
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -94,7 +92,7 @@ export default function StatsScreen() {
           <Text style={type.body}>
             Fitness {Math.round(now.fitness)} · Fatigue {Math.round(now.fatigue)} · Form {Math.round(now.form)}
           </Text>
-          <Text style={type.small}>{formState}</Text>
+          <Text style={type.small}>{formState(now.form)}</Text>
         </Card>
 
         <Card>
