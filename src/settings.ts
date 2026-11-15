@@ -1,3 +1,10 @@
+/** A town or beach found by name, with where it is. */
+export interface Place {
+  name: string;
+  latitude: number;
+  longitude: number;
+}
+
 export interface Settings {
   /** The Monday that plan week 1 starts on. */
   planStart: string;
@@ -6,6 +13,15 @@ export interface Settings {
   /** Used to turn heart rate into training load. */
   maxHr: number;
   restHr: number;
+  /** Where the forecast is for, and where ocean swims are. Unset until you choose them. */
+  homePlace?: Place;
+  beachPlace?: Place;
+  /** When "think indoor" shows: more rain chance than this (percent), wind above this (km/h), waves above this (metres). */
+  rainLimit: number;
+  windLimit: number;
+  waveLimit: number;
+  /** Below this sea temperature the weather card says to wear a wetsuit. */
+  wetsuitBelow: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -14,6 +30,10 @@ export const DEFAULT_SETTINGS: Settings = {
   raceName: 'Ironman 70.3 New Zealand',
   maxHr: 190,
   restHr: 55,
+  rainLimit: 40,
+  windLimit: 30,
+  waveLimit: 1,
+  wetsuitBelow: 20,
 };
 
 // Versions before 8 had the race on Friday 5 March. Every version saves the whole of the settings, so that wrong

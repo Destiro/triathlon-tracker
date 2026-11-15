@@ -10,7 +10,9 @@ import { HealthByDate, mergeHealth } from './health/summary';
 import { mergeWorkouts, needsReading, READ_VERSION } from './health/workouts';
 import { addSessions, applyEdits, NewSession, NO_EDITS, PlanEdits, removeSession, setMove } from './plan/edits';
 import { buildSchedule, Schedule } from './plan/schedule';
-import { DEFAULT_SETTINGS, loadSettings, Settings } from './settings';
+import { DEFAULT_SETTINGS, loadSettings, Place, Settings } from './settings';
+import { byDay, DayWeather, placeKey, SeaDay, WeatherData } from './weather';
+import { fetchWeather, findPlace, WeatherError } from './weatherApi';
 
 export type { Settings } from './settings';
 
@@ -18,6 +20,8 @@ const STORAGE_KEY = 'triathlon-tracker/v1';
 const DAY_MS = 86400000;
 // Look back a little on every read so workouts edited or finished syncing late come through.
 const OVERLAP_DAYS = 3;
+// A saved forecast is used as it is for this long before the app fetches a new one.
+const WEATHER_FRESH_MS = 3 * 3600000;
 // The first health read reaches back this far, so trends have a history from day one.
 const HEALTH_HISTORY_DAYS = 120;
 
@@ -39,6 +43,15 @@ interface Saved {
   lastHealthSync?: number | null;
   lastBackup?: number | null;
   checklist?: ChecklistState;
+  weather?: WeatherData | null;
+}
+
+/** The forecast kept by day for each place, for whatever places are set now. */
+export interface Weather {
+  fetchedAt: number;
+  home: Record<string, DayWeather>;
+  beach: Record<string, DayWeather>;
+  sea: Record<string, SeaDay>;
 }
 
 interface Store {
@@ -79,6 +92,14 @@ interface Store {
   exportBackup: () => Promise<string>;
   /** Picks a backup file and restores it into what the phone has. Resolves to a message to show. */
   restoreBackup: () => Promise<string>;
+  /** The forecast, or null until a town is set and the first fetch has finished. */
+  weather: Weather | null;
+  weatherUpdating: boolean;
+  weatherError: string | null;
+  /** Looks a town (`home`) or beach up by name and saves it. Resolves to a message to show. */
+  setPlace: (kind: 'home' | 'beach', name: string) => Promise<string>;
+  clearPlace: (kind: 'home' | 'beach') => void;
+  refreshWeather: () => Promise<void>;
   checklist: ChecklistState;
   toggleChecklist: (id: string) => void;
   addChecklist: (text: string) => void;
@@ -110,6 +131,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const healthSyncingRef = useRef(false);
   const [lastBackup, setLastBackup] = useState<number | null>(null);
   const [checklist, setChecklist] = useState<ChecklistState>(NO_CHECKLIST);
+  const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+  const [weatherUpdating, setWeatherUpdating] = useState(false);
+  const [weatherError, setWeatherError] = useState<string | null>(null);
+  const weatherRef = useRef(false);
 
   useEffect(() => {
     (async () => {
@@ -131,6 +156,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           setLastHealthSync(saved.lastHealthSync ?? null);
           setLastBackup(saved.lastBackup ?? null);
           setChecklist({ ...NO_CHECKLIST, ...saved.checklist });
+          setWeatherData(saved.weather ?? null);
         }
       } catch {
         // Unreadable save: start fresh rather than refusing to open.
@@ -154,9 +180,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       lastHealthSync,
       lastBackup,
       checklist,
+      weather: weatherData,
     };
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(saved)).catch(() => {});
-  }, [ready, settings, stored, lastSync, workoutCursor, readVersion, edits, waterOverrides, health, healthConnected, lastHealthSync, lastBackup, checklist]);
+  }, [ready, settings, stored, lastSync, workoutCursor, readVersion, edits, waterOverrides, health, healthConnected, lastHealthSync, lastBackup, checklist, weatherData]);
 
   // The workout read decides what to skip from what is saved at that moment, which the callback can't see as state.
   useEffect(() => {
@@ -231,10 +258,68 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const refreshWeather = useCallback(async () => {
+    if (weatherRef.current) return;
+    if (!settings.homePlace && !settings.beachPlace) return;
+    weatherRef.current = true;
+    setWeatherUpdating(true);
+    try {
+      setWeatherData(await fetchWeather(settings.homePlace, settings.beachPlace));
+      setWeatherError(null);
+    } catch (e) {
+      setWeatherError(e instanceof WeatherError ? e.message : 'Could not get the weather.');
+    } finally {
+      weatherRef.current = false;
+      setWeatherUpdating(false);
+    }
+  }, [settings.homePlace, settings.beachPlace]);
+
+  const setPlace = useCallback(async (kind: 'home' | 'beach', name: string): Promise<string> => {
+    try {
+      const place: Place | null = await findPlace(name);
+      if (!place) return `Could not find "${name.trim()}". Try the name of the nearest town.`;
+      setSettings((s) => ({ ...s, [kind === 'home' ? 'homePlace' : 'beachPlace']: place }));
+      return `Set to ${place.name}.`;
+    } catch (e) {
+      return e instanceof WeatherError ? e.message : 'Could not look that up. Try again.';
+    }
+  }, []);
+
+  const clearPlace = useCallback((kind: 'home' | 'beach') => {
+    setSettings((s) => ({ ...s, [kind === 'home' ? 'homePlace' : 'beachPlace']: undefined }));
+  }, []);
+
+  // The forecast for the places set now. One saved for somewhere else is not shown.
+  const weather = useMemo<Weather | null>(() => {
+    if (!weatherData) return null;
+    const homeOk = weatherData.homeKey === placeKey(settings.homePlace);
+    const beachOk = weatherData.beachKey === placeKey(settings.beachPlace);
+    if (!homeOk && !beachOk) return null;
+    return {
+      fetchedAt: weatherData.fetchedAt,
+      home: homeOk ? byDay(weatherData.home) : {},
+      beach: beachOk ? byDay(weatherData.beach) : {},
+      sea: beachOk ? byDay(weatherData.sea) : {},
+    };
+  }, [weatherData, settings.homePlace, settings.beachPlace]);
+
+  // Fetch the forecast when the app opens, and again when a place changes or the saved one is getting old.
+  useEffect(() => {
+    if (!ready || (!settings.homePlace && !settings.beachPlace)) return;
+    const fresh =
+      weatherData !== null &&
+      weatherData.homeKey === placeKey(settings.homePlace) &&
+      weatherData.beachKey === placeKey(settings.beachPlace) &&
+      Date.now() - weatherData.fetchedAt <= WEATHER_FRESH_MS;
+    // Started just after the effect rather than inside it, since it sets state straight away.
+    if (!fresh) Promise.resolve().then(refreshWeather);
+    // Only when the places change or the app opens: refreshing would otherwise re-run itself after every save.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, settings.homePlace, settings.beachPlace]);
+
   const sync = useCallback(async () => {
-    if (!healthConnected) return;
-    await Promise.all([runWorkoutSync(), runHealthSync(lastHealthSync)]);
-  }, [healthConnected, runWorkoutSync, runHealthSync, lastHealthSync]);
+    await Promise.all([healthConnected ? runWorkoutSync() : null, healthConnected ? runHealthSync(lastHealthSync) : null, refreshWeather()]);
+  }, [healthConnected, runWorkoutSync, runHealthSync, lastHealthSync, refreshWeather]);
 
   // Read new workouts and health data whenever the app opens.
   const syncedOnOpen = useRef(false);
@@ -328,6 +413,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     lastBackup,
     exportBackup,
     restoreBackup,
+    weather,
+    weatherUpdating,
+    weatherError,
+    setPlace,
+    clearPlace,
+    refreshWeather,
     checklist,
     toggleChecklist,
     addChecklist,

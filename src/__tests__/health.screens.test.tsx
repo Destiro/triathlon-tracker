@@ -33,12 +33,18 @@ jest.mock('../store', () => {
   }
   const health = combine({ nights, hrv, vo2Max: { '2026-10-20': 47.2, '2026-11-08': 48.6 } });
   const store = {
-    settings,
+    settings: { ...settings, rainLimit: 40, windLimit: 30, waveLimit: 1, wetsuitBelow: 20 },
     schedule: buildSchedule(settings.planStart, settings.raceDate, settings.raceName),
     activities: [],
     activitiesByDate: new Map(),
     sync: jest.fn(),
     lastBackup: null,
+    weather: null,
+    weatherUpdating: false,
+    weatherError: null,
+    setPlace: jest.fn(async (kind: string, name: string) => `Set to ${name} (${kind}).`),
+    clearPlace: jest.fn(),
+    refreshWeather: jest.fn(),
     exportBackup: jest.fn(async () => 'Backup made. Keep it somewhere off this phone, like Google Drive.'),
     restoreBackup: jest.fn(async () => ''),
     syncing: false,
@@ -105,6 +111,23 @@ test('Settings warns when only the last 30 days can be read', async () => {
   mockPastData = false;
   await render(<SettingsScreen />);
   expect(screen.getByText(/Only the last 30 days can be read/)).toBeTruthy();
+});
+
+test('Settings looks a town up by name and shows what it found', async () => {
+  const { useStore } = jest.requireMock('../store');
+  await render(<SettingsScreen />);
+  expect(screen.getByText('Weather')).toBeTruthy();
+  await fireEvent.changeText(screen.getByLabelText('Your town'), 'Tauranga');
+  await fireEvent.press(screen.getAllByText('Find it')[0]);
+  expect(useStore().setPlace).toHaveBeenCalledWith('home', 'Tauranga');
+  expect(await screen.findByText('Set to Tauranga (home).')).toBeTruthy();
+});
+
+test('Settings has the limits for think indoor, with their usual values', async () => {
+  await render(<SettingsScreen />);
+  expect(screen.getByText('Think indoor when rain is likelier than (%)')).toBeTruthy();
+  expect(screen.getByDisplayValue('40')).toBeTruthy();
+  expect(screen.getByDisplayValue('30')).toBeTruthy();
 });
 
 test('Settings offers to connect Health Connect', async () => {

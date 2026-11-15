@@ -1,8 +1,9 @@
 import { BackupData, backupFileName, describeBackup, makeBackup, readBackup, restoreInto } from '../backup';
 import { NO_EDITS } from '../plan/edits';
+import { DEFAULT_SETTINGS } from '../settings';
 import { activity } from './helpers';
 
-const settings = { planStart: '2026-10-19', raceDate: '2027-03-05', raceName: 'Ironman 70.3 New Zealand', maxHr: 190, restHr: 55 };
+const settings = DEFAULT_SETTINGS;
 const run = activity({ id: 16000000001, sport: 'run', date: '2026-10-20', hr: { 140: 1800 } });
 const swim = activity({ id: 16000000002, sport: 'swim', date: '2026-10-21', openWater: false });
 const today = activity({ id: Date.parse('2026-11-15T21:00:00Z'), sport: 'bike', date: '2026-11-16', source: 'health' });

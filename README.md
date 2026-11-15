@@ -44,6 +44,14 @@ and kept here as the same number in metres.
   recovery and brick sessions) are checked against it: "moderate aerobic" is zones 2 to 3, "low aerobic" 1 to 2,
   "recovery" 1, and 70% of the time in range counts as on target. Intervals are not checked. To change what the
   plan's words mean, edit `INTENSITY_ZONES` in `src/zones.ts`; the zone boundaries are `ZONE_STARTS`.
+- **Weather** (Plan): set your town in Settings and the Plan calendar shows an icon and the high on each of the next
+  16 days. Tap a day with a ride, run or brick and it says "Good outside" or "Think indoor" with the reason: rain more
+  than 40% likely, wind over 30 km/h, or thunderstorms. Set an ocean swim beach as well and a day with a swim gets sea
+  temperature, waves and a wetsuit call ("Think pool" when waves top 1 m, wind tops 30 km/h or there is lightning; rain
+  doesn't count in the water). The limits are in Settings. The forecast comes from [Open-Meteo](https://open-meteo.com),
+  which is free and needs no account or key; the app sends it only the latitude and longitude of the places you set, and
+  keeps the answer for 3 hours. The sea forecast reaches about 8 days, the weather 16. Lakes have no sea data. Tides aren't
+  available.
 - **Pool or open water**: Samsung Health records pool and open-water swims as different exercise types. Tap the tag
   on a swim to correct it. Stats compares the pace of each.
 - **Personal bests**: a card on Today when a workout in the last two days beat your previous best, for example
