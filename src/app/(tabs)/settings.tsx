@@ -6,6 +6,7 @@ import { Button, Card } from '../../components/ui';
 import { fromKey, isDateKey } from '../../dates';
 import { openSettings as openHealthConnect } from '../../health/connect';
 import { formatAgo } from '../../format';
+import { healthCoverage } from '../../statsExtra';
 import { Settings, useStore } from '../../store';
 import { colors, radius, spacing, type } from '../../theme';
 
@@ -125,6 +126,14 @@ export default function SettingsScreen() {
                 <Text style={[type.small, healthError ? styles.error : null]}>
                   Sleep and recovery: {healthError ?? (healthSyncing ? 'reading…' : lastHealthSync ? `last read ${formatAgo(lastHealthSync)}` : 'not read yet')}
                 </Text>
+                <View style={{ gap: 2 }}>
+                  <Text style={type.label}>Coming through so far</Text>
+                  {healthCoverage(health, activities).map((c) => (
+                    <Text key={c.label} style={type.small}>
+                      {c.label}: {c.count ? `${c.count} ${c.unit}` : 'none yet'}
+                    </Text>
+                  ))}
+                </View>
                 {pastDataAllowed === false && (
                   <Text style={type.small}>
                     Only the last 30 days can be read. To bring in older workouts, allow past data: Choose what the app can read → Triathlon Tracker.

@@ -1,5 +1,5 @@
 import { Activity } from '../activities';
-import { findSame, localIso, mergeWorkouts, needsReading, SessionData, sessionToActivity } from '../health/workouts';
+import { findSame, localIso, mergeWorkouts, needsReading, READ_VERSION, SessionData, sessionToActivity } from '../health/workouts';
 import { activity } from './helpers';
 
 const START = '2026-11-16T06:00:00.000Z';
@@ -89,7 +89,7 @@ describe('keeping Strava history while reading Health Connect', () => {
   const stravaRun = activity({ id: 16000000001, sport: 'run', date: local('2026-11-13T02:51:00.000Z').slice(0, 10), start: local('2026-11-13T02:51:00.000Z'), distanceM: 6100, elevationM: 40, hr: { 150: 2000 } });
   const stravaRide = activity({ id: 16000000002, sport: 'bike', date: local('2026-11-12T05:00:00.000Z').slice(0, 10), start: local('2026-11-12T05:00:00.000Z'), distanceM: 20000 });
   const fromHealth = (iso: string, over: Partial<Activity> = {}): Activity =>
-    activity({ id: Date.parse(iso), sport: 'run', date: local(iso).slice(0, 10), start: local(iso), distanceM: 6080, source: 'health', hr: { 148: 2100 }, ...over });
+    activity({ id: Date.parse(iso), sport: 'run', date: local(iso).slice(0, 10), start: local(iso), distanceM: 6080, source: 'health', read: READ_VERSION, hr: { 148: 2100 }, ...over });
 
   it('finds the same workout by id, or the same sport started within ten minutes', () => {
     expect(findSame([stravaRun], fromHealth('2026-11-13T02:51:20.000Z'))).toBe(stravaRun);

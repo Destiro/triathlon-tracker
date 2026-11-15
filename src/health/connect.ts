@@ -14,24 +14,37 @@ import {
   type RecordType,
 } from 'react-native-health-connect';
 import { Activity } from '../activities';
-import { combine, HealthByDate, perDay, summarizeSleep } from './summary';
+import { combine, HealthByDate, overnightReadings, perDay, summarizeSleep } from './summary';
 import { SessionData, sessionToActivity } from './workouts';
 
 /** An error whose message is fine to show to the person using the app. */
 export class HealthError extends Error {}
 
-const READS: Permission[] = [
-  { accessType: 'read', recordType: 'SleepSession' },
-  { accessType: 'read', recordType: 'Vo2Max' },
-  { accessType: 'read', recordType: 'RestingHeartRate' },
-  { accessType: 'read', recordType: 'HeartRateVariabilityRmssd' },
-  { accessType: 'read', recordType: 'HeartRate' },
+/**
+ * Everything the app asks to read. Each needs its Android permission declared in app.json as well, or the request fails
+ * without a clear error; a test checks the two agree.
+ */
+export const READ_TYPES = [
+  { recordType: 'SleepSession', permission: 'android.permission.health.READ_SLEEP' },
+  { recordType: 'Vo2Max', permission: 'android.permission.health.READ_VO2_MAX' },
+  { recordType: 'RestingHeartRate', permission: 'android.permission.health.READ_RESTING_HEART_RATE' },
+  { recordType: 'HeartRateVariabilityRmssd', permission: 'android.permission.health.READ_HEART_RATE_VARIABILITY' },
+  { recordType: 'HeartRate', permission: 'android.permission.health.READ_HEART_RATE' },
   // Workouts, and what the watch records during them.
-  { accessType: 'read', recordType: 'ExerciseSession' },
-  { accessType: 'read', recordType: 'Distance' },
-  { accessType: 'read', recordType: 'Speed' },
-  { accessType: 'read', recordType: 'ElevationGained' },
-];
+  { recordType: 'ExerciseSession', permission: 'android.permission.health.READ_EXERCISE' },
+  { recordType: 'Distance', permission: 'android.permission.health.READ_DISTANCE' },
+  { recordType: 'Speed', permission: 'android.permission.health.READ_SPEED' },
+  { recordType: 'ElevationGained', permission: 'android.permission.health.READ_ELEVATION_GAINED' },
+  { recordType: 'TotalCaloriesBurned', permission: 'android.permission.health.READ_TOTAL_CALORIES_BURNED' },
+  // Body and overnight readings. The watch may not share these; the app shows them only when they come through.
+  { recordType: 'Weight', permission: 'android.permission.health.READ_WEIGHT' },
+  { recordType: 'BodyFat', permission: 'android.permission.health.READ_BODY_FAT' },
+  { recordType: 'LeanBodyMass', permission: 'android.permission.health.READ_LEAN_BODY_MASS' },
+  { recordType: 'OxygenSaturation', permission: 'android.permission.health.READ_OXYGEN_SATURATION' },
+  { recordType: 'RespiratoryRate', permission: 'android.permission.health.READ_RESPIRATORY_RATE' },
+] as const;
+
+const READS: Permission[] = READ_TYPES.map((t) => ({ accessType: 'read', recordType: t.recordType }));
 // Without this Health Connect only hands over the 30 days before access was first granted.
 const HISTORY: ReadHealthDataHistoryPermission = { accessType: 'read', recordType: 'ReadHealthDataHistory' };
 
@@ -131,13 +144,14 @@ export async function fetchWorkoutsSince(
   const activities: Activity[] = [];
   for (const session of wanted) {
     try {
-      const [distances, heartRates, speeds, elevations] = await Promise.all([
+      const [distances, heartRates, speeds, elevations, calories] = await Promise.all([
         readIfGranted(granted, 'Distance', session.startTime, session.endTime),
         readIfGranted(granted, 'HeartRate', session.startTime, session.endTime),
         readIfGranted(granted, 'Speed', session.startTime, session.endTime),
         readIfGranted(granted, 'ElevationGained', session.startTime, session.endTime),
+        readIfGranted(granted, 'TotalCaloriesBurned', session.startTime, session.endTime),
       ]);
-      const data: SessionData = { session, distances, heartRates, speeds, elevations, calories: [] };
+      const data: SessionData = { session, distances, heartRates, speeds, elevations, calories };
       const activity = sessionToActivity(data);
       if (activity) activities.push(activity);
     } catch {
@@ -154,11 +168,16 @@ export async function fetchHealthSince(since: string, now = new Date()): Promise
   if (granted.size === 0) throw new HealthError('Health Connect access was turned off. Connect again in Settings.');
   const end = now.toISOString();
   try {
-    const [sleep, vo2, resting, hrv] = await Promise.all([
+    const [sleep, vo2, resting, hrv, weight, fat, lean, oxygen, breathing] = await Promise.all([
       readIfGranted(granted, 'SleepSession', since, end),
       readIfGranted(granted, 'Vo2Max', since, end),
       readIfGranted(granted, 'RestingHeartRate', since, end),
       readIfGranted(granted, 'HeartRateVariabilityRmssd', since, end),
+      readIfGranted(granted, 'Weight', since, end),
+      readIfGranted(granted, 'BodyFat', since, end),
+      readIfGranted(granted, 'LeanBodyMass', since, end),
+      readIfGranted(granted, 'OxygenSaturation', since, end),
+      readIfGranted(granted, 'RespiratoryRate', since, end),
     ]);
     const nights = summarizeSleep(sleep);
 
@@ -175,6 +194,14 @@ export async function fetchHealthSince(since: string, now = new Date()): Promise
       vo2Max: perDay(vo2.map((r) => ({ time: r.time, value: r.vo2MillilitersPerMinuteKilogram })), 'latest'),
       restingHr: perDay(resting.map((r) => ({ time: r.time, value: r.beatsPerMinute })), 'lowest'),
       hrv: perDay(hrv.map((r) => ({ time: r.time, value: r.heartRateVariabilityMillis })), 'average'),
+      weight: perDay(weight.map((r) => ({ time: r.time, value: r.weight.inKilograms })), 'latest'),
+      bodyFat: perDay(fat.map((r) => ({ time: r.time, value: r.percentage })), 'latest'),
+      lean: perDay(lean.map((r) => ({ time: r.time, value: r.mass.inKilograms })), 'latest'),
+      overnight: overnightReadings(
+        nights,
+        oxygen.map((r) => ({ time: r.time, value: r.percentage })),
+        breathing.map((r) => ({ time: r.time, value: r.rate })),
+      ),
     });
   } catch (e) {
     throw new HealthError('Could not read from Health Connect. Try again.', { cause: e });

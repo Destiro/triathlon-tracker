@@ -100,6 +100,35 @@ export function localIso(msSinceEpoch: number): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
+/** Bump when the reader starts keeping something new, so workouts already saved are read again. */
+export const READ_VERSION = 2;
+// Drift needs a long steady stretch: skip the warm-up, and don't try on anything under this.
+const DRIFT_WARMUP_S = 600;
+const DRIFT_MIN_S = 40 * 60;
+// Each half needs this many readings to say anything.
+const DRIFT_MIN_SAMPLES = 60;
+
+const meanOf = (values: number[]) => (values.length ? values.reduce((a, b) => a + b, 0) / values.length : null);
+
+/** Average heart rate and moving speed in the two halves of a long session, after the warm-up. */
+function halvesOf(heart: { time: string; beatsPerMinute: number }[], speeds: { time: string; speed: { inMetersPerSecond: number } }[], from: number, to: number) {
+  if (to - from < DRIFT_MIN_S * 1000) return undefined;
+  const start = from + DRIFT_WARMUP_S * 1000;
+  const mid = (start + to) / 2;
+  const half = <T extends { time: string }>(list: T[], a: number, b: number) => list.filter((s) => ms(s.time) >= a && ms(s.time) < b);
+  const hr1 = half(heart, start, mid);
+  const hr2 = half(heart, mid, to + 1);
+  const v1 = half(speeds, start, mid).map((s) => s.speed.inMetersPerSecond).filter((v) => v > MOVING_MS);
+  const v2 = half(speeds, mid, to + 1).map((s) => s.speed.inMetersPerSecond).filter((v) => v > MOVING_MS);
+  if ([hr1, hr2, v1, v2].some((l) => l.length < DRIFT_MIN_SAMPLES)) return undefined;
+  return {
+    hr1: meanOf(hr1.map((s) => s.beatsPerMinute))!,
+    hr2: meanOf(hr2.map((s) => s.beatsPerMinute))!,
+    v1: meanOf(v1)!,
+    v2: meanOf(v2)!,
+  };
+}
+
 // Below this you are standing still, so the reading doesn't count towards moving speed.
 const MOVING_MS = 0.3;
 // Fewer heart rate readings than this (a gym app writing one every ten minutes) can't say how long was spent in each zone.
@@ -115,9 +144,8 @@ export function sessionToActivity(data: SessionData): Activity | null {
   const inside = <T extends { time: string }>(samples: T[]) => samples.filter((s) => ms(s.time) >= from && ms(s.time) <= to);
 
   const heart = inside(data.heartRates.flatMap((r) => r.samples)).sort((a, b) => ms(a.time) - ms(b.time));
-  const moving = inside(data.speeds.flatMap((r) => r.samples))
-    .map((s) => s.speed.inMetersPerSecond)
-    .filter((v) => v > MOVING_MS);
+  const speedSamples = inside(data.speeds.flatMap((r) => r.samples));
+  const moving = speedSamples.map((s) => s.speed.inMetersPerSecond).filter((v) => v > MOVING_MS);
   const elapsedS = Math.round((to - from) / 1000);
   const distanceM = data.distances.reduce((sum, d) => sum + d.distance.inMeters, 0);
   // Health Connect has no moving time, so it is worked out from the speed while moving; stops at lights don't count.
@@ -125,6 +153,8 @@ export function sessionToActivity(data: SessionData): Activity | null {
   const movingS = distanceM > 0 && movingSpeed > 0 ? Math.min(elapsedS, Math.round(distanceM / movingSpeed)) : elapsedS;
   const start = localIso(from);
   const name = exerciseName(session.exerciseType);
+  const kcal = data.calories.reduce((sum, c) => sum + c.energy.inKilocalories, 0);
+  const halves = sport === 'run' || sport === 'bike' ? halvesOf(heart, speedSamples, from, to) : undefined;
 
   return {
     id: from,
@@ -149,6 +179,9 @@ export function sessionToActivity(data: SessionData): Activity | null {
           )
         : {},
     source: 'health',
+    read: READ_VERSION,
+    ...(kcal > 0 ? { kcal: Math.round(kcal) } : {}),
+    ...(halves ? { halves } : {}),
   };
 }
 
@@ -175,7 +208,7 @@ export function needsReading(session: { startTime: string; exerciseType: number 
   const from = ms(session.startTime);
   const same = findSame(saved, { id: from, sport, start: localIso(from) });
   if (!same) return true;
-  if (same.source === 'health') return from >= refreshAfterMs;
+  if (same.source === 'health') return from >= refreshAfterMs || (same.read ?? 1) < READ_VERSION;
   return same.hr === undefined;
 }
 

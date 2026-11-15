@@ -5,7 +5,7 @@ import { colors, spacing, type } from '../theme';
 import { ZONE_NAMES, ZoneTarget, zoneVerdict } from '../zones';
 
 // Lighter means harder, so the bars read without relying on hue alone.
-const ZONE_COLORS = ['#3B5A8F', '#4F7BC4', '#6EA8FF', '#A5C8FF', '#DCEAFF'];
+export const ZONE_COLORS = ['#3B5A8F', '#4F7BC4', '#6EA8FF', '#A5C8FF', '#DCEAFF'];
 
 interface Props {
   /** Seconds in each of the five zones. */

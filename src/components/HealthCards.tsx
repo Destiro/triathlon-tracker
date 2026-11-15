@@ -3,6 +3,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { addDays, fromKey, toKey } from '../dates';
 import { formatMinutes } from '../format';
 import { baseline, HealthByDate, healthSeries, latest, Night, recovery } from '../health/summary';
+import { morningReadiness } from '../health/readiness';
+import { ReadinessSummary } from './StatsCards';
 import { colors, healthColors, radius, spacing, type } from '../theme';
 import { BarChart, LineChart } from './charts';
 import { Card } from './ui';
@@ -73,6 +75,17 @@ export function LastNight({ health, date }: { health: HealthByDate; date: string
         {day.restingHr !== undefined && <Stat label="Resting HR" value={`${day.restingHr} bpm`} />}
       </View>
       {read && <Text style={[type.body, { color: TONE_COLORS[read.tone] }]}>{read.text}</Text>}
+    </Card>
+  );
+}
+
+/** The morning readiness score, for Today under last night's sleep. */
+export function ReadinessToday({ health, date }: { health: HealthByDate; date: string }) {
+  const readiness = morningReadiness(health, date);
+  if (!readiness) return null;
+  return (
+    <Card title="Readiness" note="From last night's sleep, sleeping heart rate and HRV, each against your own usual.">
+      <ReadinessSummary readiness={readiness} />
     </Card>
   );
 }
