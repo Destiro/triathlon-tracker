@@ -2,9 +2,8 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { addDays, fromKey, toKey } from '../dates';
 import { formatMinutes } from '../format';
-import { baseline, HealthByDate, healthSeries, latest, Night, recovery } from '../health/summary';
+import { baseline, HealthByDate, healthSeries, latest, Night } from '../health/summary';
 import { morningReadiness } from '../health/readiness';
-import { ReadinessSummary } from './StatsCards';
 import { colors, healthColors, radius, spacing, type } from '../theme';
 import { BarChart, LineChart } from './charts';
 import { Card } from './ui';
@@ -49,43 +48,46 @@ function StageBar({ night }: { night: Night }) {
 
 const TONE_COLORS = { good: colors.success, ok: colors.warning, low: colors.danger };
 
-/** Last night's sleep and how recovered you look, for the top of Today. */
-export function LastNight({ health, date }: { health: HealthByDate; date: string }) {
+/** Last night's sleep and the readiness score from it, as one card for the top of Today. */
+export function ThisMorning({ health, date }: { health: HealthByDate; date: string }) {
   const day = health[date];
   const night = day?.sleep;
-  if (!night) return null;
+  const readiness = morningReadiness(health, date);
+  if (!night && !readiness) return null;
   const usual = baseline(health, 'asleepMin', date);
-  const read = recovery(health, date);
   return (
     <Card>
       <View style={styles.between}>
-        <Text style={type.heading}>Last night</Text>
-        <Text style={type.small}>
-          {clockTime(night.start)} to {clockTime(night.end)}
-        </Text>
+        <Text style={type.heading}>This morning</Text>
+        {night && (
+          <Text style={type.small}>
+            {clockTime(night.start)} to {clockTime(night.end)}
+          </Text>
+        )}
       </View>
-      <View style={styles.between}>
-        <Text style={type.number}>{formatMinutes(night.asleepMin)}</Text>
-        {usual !== null && <Text style={type.small}>Usually {formatMinutes(usual)}</Text>}
-      </View>
-      <StageBar night={night} />
+      {readiness && (
+        <View style={styles.between} accessibilityLabel={`Readiness ${readiness.score}, ${readiness.label}`}>
+          <Text style={[type.number, { fontSize: 32, color: TONE_COLORS[readiness.tone] }]}>{readiness.score}</Text>
+          <Text style={[type.heading, { color: TONE_COLORS[readiness.tone] }]}>{readiness.label}</Text>
+        </View>
+      )}
+      {night && (
+        <>
+          <View style={styles.between}>
+            <Text style={type.body}>
+              Slept <Text style={styles.statValue}>{formatMinutes(night.asleepMin)}</Text>
+            </Text>
+            {usual !== null && <Text style={type.small}>Usually {formatMinutes(usual)}</Text>}
+          </View>
+          <StageBar night={night} />
+        </>
+      )}
       <View style={styles.stats}>
-        {night.sleepingHr !== undefined && <Stat label="Sleeping HR" value={`${night.sleepingHr} bpm`} />}
-        {day.hrv !== undefined && <Stat label="HRV" value={`${day.hrv} ms`} />}
-        {day.restingHr !== undefined && <Stat label="Resting HR" value={`${day.restingHr} bpm`} />}
+        {night?.sleepingHr !== undefined && <Stat label="Sleeping HR" value={`${night.sleepingHr} bpm`} />}
+        {day?.hrv !== undefined && <Stat label="HRV" value={`${day.hrv} ms`} />}
+        {day?.restingHr !== undefined && <Stat label="Resting HR" value={`${day.restingHr} bpm`} />}
       </View>
-      {read && <Text style={[type.body, { color: TONE_COLORS[read.tone] }]}>{read.text}</Text>}
-    </Card>
-  );
-}
-
-/** The morning readiness score, for Today under last night's sleep. */
-export function ReadinessToday({ health, date }: { health: HealthByDate; date: string }) {
-  const readiness = morningReadiness(health, date);
-  if (!readiness) return null;
-  return (
-    <Card title="Readiness" note="From last night's sleep, sleeping heart rate and HRV, each against your own usual.">
-      <ReadinessSummary readiness={readiness} />
+      {readiness && readiness.missing.length > 0 && <Text style={type.small}>Readiness leaves out {readiness.missing.join(', ')}: nothing to compare with yet.</Text>}
     </Card>
   );
 }
@@ -99,7 +101,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** Sleep, recovery and VO2 max trends for the Stats tab. Draws nothing for data the watch doesn't provide. */
+/** Sleep, recovery and VO2 max trends for the Health tab. Draws nothing for data the watch doesn't provide. */
 export function HealthStats({ health, todayKey }: { health: HealthByDate; todayKey: string }) {
   const nights = healthSeries(health, toKey(addDays(fromKey(todayKey), -(SLEEP_NIGHTS - 1))), todayKey);
   const trend = healthSeries(health, toKey(addDays(fromKey(todayKey), -(TREND_DAYS - 1))), todayKey);

@@ -81,9 +81,10 @@ test('Today shows every workout for the day at once, with its detail', async () 
   for (const gone of ['UP NEXT', 'Up next', 'Later today', 'Done today']) expect(screen.queryByText(gone)).toBeNull();
 });
 
-test("Today shows last night's sleep from Health Connect", async () => {
+test("Today shows last night's sleep from Health Connect in one This morning card", async () => {
   await render(<TodayScreen />);
-  expect(screen.getByText('Last night')).toBeTruthy();
+  expect(screen.getByText('This morning')).toBeTruthy();
+  expect(screen.queryByText('Last night')).toBeNull();
   expect(screen.getByText('7 h 05')).toBeTruthy();
   expect(screen.getByText('Deep 1 h 10')).toBeTruthy();
   expect(screen.getByText('REM 1 h 35')).toBeTruthy();
@@ -119,10 +120,18 @@ test('Race shows the countdown and the course, and no race week list', async () 
   expect(screen.queryByText('Tap a day to see the workout.')).toBeNull();
 });
 
-test('Race shows a pacing plan, how ready the distances are, and the checklist', async () => {
+test('Race is split into Race day, Ready? and Checklist pages, one at a time', async () => {
   await render(<RaceScreen />);
-  expect(screen.getByText('Your pacing plan')).toBeTruthy();
+  expect(screen.getByText('Predicted finish and pacing')).toBeTruthy();
+  expect(screen.queryByText('Ready for the distance?')).toBeNull();
+  expect(screen.queryByText('Race checklist')).toBeNull();
+
+  await fireEvent.press(screen.getByText('Ready?'));
   expect(screen.getByText('Ready for the distance?')).toBeTruthy();
+  expect(screen.getByText('The road there')).toBeTruthy();
+  expect(screen.queryByText('Predicted finish and pacing')).toBeNull();
+
+  await fireEvent.press(screen.getByText('Checklist'));
   expect(screen.getByText('Race checklist')).toBeTruthy();
   expect(screen.getByText(/^1 of [0-9]+ ticked[.]$/)).toBeTruthy();
 });
@@ -130,14 +139,13 @@ test('Race shows a pacing plan, how ready the distances are, and the checklist',
 test('ticking a checklist item on Race passes its id to the store', async () => {
   const { useStore } = jest.requireMock('../store');
   await render(<RaceScreen />);
+  await fireEvent.press(screen.getByText('Checklist'));
   await fireEvent.press(screen.getByLabelText('Helmet'));
   expect(useStore().toggleChecklist).toHaveBeenCalledWith('bike.0');
 });
 
-test('Today shows a readiness score under last night, from sleep alone when there is no usual to compare with yet', async () => {
+test('Today shows the readiness score in This morning, from sleep alone when there is no usual to compare with yet', async () => {
   await render(<TodayScreen />);
-  expect(screen.getByText('Readiness')).toBeTruthy();
-  expect(screen.getByText('88')).toBeTruthy();
-  expect(screen.getByText('Good to go')).toBeTruthy();
-  expect(screen.getByText('Not counted: heart rate, HRV.')).toBeTruthy();
+  expect(screen.getByLabelText('Readiness 88, Good to go')).toBeTruthy();
+  expect(screen.getByText('Readiness leaves out heart rate, HRV: nothing to compare with yet.')).toBeTruthy();
 });

@@ -3,8 +3,7 @@ import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { CHECKLIST, ChecklistState, progress } from '../checklist';
 import { fromKey } from '../dates';
-import { formatDistance, formatRunPace, formatSpeed, formatSwimPace } from '../format';
-import { PacingPlan } from '../pacing';
+import { formatDistance } from '../format';
 import { Longest, shareOf } from '../readiness';
 import { RaceDistances } from '../prediction';
 import { FormProjection } from '../projection';
@@ -15,39 +14,6 @@ import { colorOf, SPORT_LABELS, tintOf } from './sport';
 import { Button, Card } from './ui';
 
 const shortDate = (key: string) => fromKey(key).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-
-function Row({ sport, label, value }: { sport: 'swim' | 'bike' | 'run'; label: string; value: string }) {
-  return (
-    <View style={[styles.row, { borderLeftColor: colorOf(sport), backgroundColor: tintOf(sport) }]}>
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text style={type.body}>{SPORT_LABELS[sport]}</Text>
-        <Text style={type.small}>{label}</Text>
-      </View>
-      <Text style={styles.value}>{value}</Text>
-    </View>
-  );
-}
-
-/** What to aim for on each leg, from the predicted finish and your heart rate zones. */
-export function PacingCard({ plan }: { plan: PacingPlan | null }) {
-  return (
-    <Card title="Your pacing plan" note="From your predicted finish and your heart rate zones.">
-      {plan ? (
-        <>
-          <Row sport="swim" label={`Steady, ${plan.swim.zones}`} value={formatSwimPace(plan.swim.speed)} />
-          <Row sport="bike" label={`Heart rate no higher than ${plan.bike.ceilingBpm}`} value={formatSpeed(plan.bike.speed)} />
-          <Row sport="run" label={`Heart rate no higher than ${plan.run.ceilingBpm}`} value={formatRunPace(plan.run.speed)} />
-          <Text style={type.small}>
-            Run: hold the first {plan.run.holdBackKm} km back to {formatRunPace(plan.run.startSpeed)}, then settle to {formatRunPace(plan.run.speed)}. Going out
-            too fast off the bike is the usual way a 70.3 run goes wrong.
-          </Text>
-        </>
-      ) : (
-        <Text style={type.body}>Shows once there is a predicted finish to pace to.</Text>
-      )}
-    </Card>
-  );
-}
 
 /** The longest swim, ride, run and brick so far against the race legs. */
 export function ReadinessCard({ longest, race }: { longest: Longest; race: RaceDistances }) {
@@ -180,7 +146,6 @@ export function ChecklistCard({ state, onToggle, onAdd, onRemove }: ChecklistPro
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderLeftWidth: 5, borderRadius: radius.sm, paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
   value: { ...type.number, fontSize: 16 },
   between: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: spacing.sm },
   track: { height: 10, borderRadius: radius.pill, overflow: 'hidden' },

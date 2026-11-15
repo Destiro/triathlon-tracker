@@ -18,14 +18,16 @@ export default function TabLayout() {
         headerShown: false,
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.inkSoft,
-        tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
+        // Six tabs, so the labels are a touch smaller to fit.
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.line },
         sceneStyle: { backgroundColor: colors.bg },
       }}
     >
       <Tabs.Screen name="index" options={tab('Today', 'home-variant-outline')} />
       <Tabs.Screen name="plan" options={tab('Plan', 'calendar-check-outline')} />
-      <Tabs.Screen name="stats" options={tab('Stats', 'chart-line')} />
+      <Tabs.Screen name="stats" options={tab('Training', 'chart-line')} />
+      <Tabs.Screen name="health" options={tab('Health', 'heart-pulse')} />
       <Tabs.Screen name="race" options={tab('Race', 'flag-checkered')} />
       <Tabs.Screen name="settings" options={tab('Settings', 'cog-outline')} />
     </Tabs>
