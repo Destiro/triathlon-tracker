@@ -43,7 +43,7 @@ beforeEach(() => {
 test('predicts a finish from recent training, with a range, the splits and what they are based on', async () => {
   mockActivities = training();
   await render(<RaceScreen />);
-  expect(screen.getByText('Predicted finish')).toBeTruthy();
+  expect(screen.getByText('Predicted finish and pacing')).toBeTruthy();
   expect(screen.getByText('7:30')).toBeTruthy();
   expect(screen.getByText('Likely between 6:58 and 8:01')).toBeTruthy();
   expect(screen.getByText('Fair estimate')).toBeTruthy();
@@ -76,6 +76,6 @@ test('has no prediction once the race is over', async () => {
   mockToday = '2027-03-06';
   mockActivities = training();
   await render(<RaceScreen />);
-  expect(screen.queryByText('Predicted finish')).toBeNull();
+  expect(screen.queryByText('Predicted finish and pacing')).toBeNull();
   expect(screen.getByText('Done')).toBeTruthy();
 });

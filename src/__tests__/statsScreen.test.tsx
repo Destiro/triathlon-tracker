@@ -2,8 +2,9 @@
  * Draws the Stats tab against a fake store with workouts that have heart rate zones, calories and drift, and health
  * with body and overnight readings. Sunday 15 November 2026, week 5.
  */
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
+import HealthScreen from '../app/(tabs)/health';
 import StatsScreen from '../app/(tabs)/stats';
 
 jest.mock('react-native-safe-area-context', () => jest.requireActual('react-native-safe-area-context/jest/mock').default);
@@ -28,7 +29,7 @@ jest.mock('../store', () => {
   ];
   const nights: Record<string, object> = {};
   const hrv: Record<string, number> = {};
-  for (let d = 1; d <= 14; d++) {
+  for (let d = 1; d <= 15; d++) {
     const date = `2026-11-${String(d).padStart(2, '0')}`;
     nights[date] = { start: `2026-11-${String(d).padStart(2, '0')}T00:00:00.000Z`, end: `2026-11-${String(d).padStart(2, '0')}T07:00:00.000Z`, asleepMin: 440, awakeMin: 0, deepMin: 0, remMin: 0, lightMin: 0, sleepingHr: 52 };
     hrv[date] = 60;
@@ -51,22 +52,45 @@ beforeEach(() => {
   mockBare = false;
 });
 
-test('Stats shows the new cards when the data is there', async () => {
+test('Training opens on Progress, with one volume chart that switches sport', async () => {
   await render(<StatsScreen />);
+  expect(screen.getByText('Training')).toBeTruthy();
   expect(screen.getByText('November so far')).toBeTruthy();
+  expect(screen.getByText('Volume per week')).toBeTruthy();
+  expect(screen.queryByText('Swim per week')).toBeNull();
   expect(screen.getByText('Time in zones')).toBeTruthy();
+  expect(screen.getByText('Fitness and form')).toBeTruthy();
   expect(screen.getByText('Heart rate drift')).toBeTruthy();
-  expect(screen.getByText('Energy burned')).toBeTruthy();
+  expect(screen.getByText('1,270 kcal')).toBeTruthy();
+  // Health lives on its own tab now.
+  for (const gone of ['Sleep', 'Body', 'Overnight', 'Readiness, last two weeks']) expect(screen.queryByText(gone)).toBeNull();
+  await fireEvent.press(screen.getAllByText('Bike')[0]);
+  expect(screen.getByText('Volume per week')).toBeTruthy();
+});
+
+test('Training keeps bests and totals on a Records page', async () => {
+  await render(<StatsScreen />);
+  expect(screen.queryByText('Totals since the plan began')).toBeNull();
+  await fireEvent.press(screen.getByText('Records'));
+  expect(screen.getByText('Totals since the plan began')).toBeTruthy();
+  expect(screen.queryByText('Time in zones')).toBeNull();
+});
+
+test('the Health tab has readiness, body and overnight readings', async () => {
+  await render(<HealthScreen />);
+  expect(screen.getByText('Readiness today')).toBeTruthy();
   expect(screen.getByText('Readiness, last two weeks')).toBeTruthy();
   expect(screen.getByText('Body')).toBeTruthy();
   expect(screen.getByText('Overnight')).toBeTruthy();
   // Weight fell 1.6 kg between the two readings.
   expect(screen.getByText('74.2 kg  −1.6')).toBeTruthy();
-  expect(screen.getByText('1,270 kcal')).toBeTruthy();
 });
 
-test('Stats leaves out the cards that have no data behind them', async () => {
+test('Training and Health leave out what has no data behind it', async () => {
   mockBare = true;
   await render(<StatsScreen />);
-  for (const gone of ['Time in zones', 'Heart rate drift', 'Energy burned', 'Body', 'Overnight']) expect(screen.queryByText(gone)).toBeNull();
+  for (const gone of ['Time in zones', 'Heart rate drift', 'Energy burned']) expect(screen.queryByText(gone)).toBeNull();
+  await render(<HealthScreen />);
+  for (const gone of ['Body', 'Overnight', 'Readiness today']) expect(screen.queryByText(gone)).toBeNull();
+  expect(screen.getByText(/Connect Health Connect in Settings/)).toBeTruthy();
 });
