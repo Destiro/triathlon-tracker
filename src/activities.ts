@@ -30,6 +30,15 @@ export interface Activity {
   hr?: Record<number, number>;
   /** Where it came from. Missing on everything saved before the switch, which all came from Strava. */
   source?: 'health';
+  /** Energy burned, in kilocalories, when the watch wrote it. */
+  kcal?: number;
+  /**
+   * Long rides and runs only: average heart rate and speed in the first and second half, after the warm-up. Heart rate
+   * rising for the same speed is cardiac drift.
+   */
+  halves?: { hr1: number; hr2: number; v1: number; v2: number };
+  /** Which version of the reader made this record. Older ones are read again when the reader learns something new. */
+  read?: number;
 }
 
 /**

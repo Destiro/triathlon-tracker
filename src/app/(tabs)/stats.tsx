@@ -3,10 +3,14 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BarChart, LineChart } from '../../components/charts';
 import { HealthStats } from '../../components/HealthCards';
+import { BodyCard, DriftCard, EnergyCard, MonthCard, OvernightCard, ReadinessTrend, ZonesByWeek } from '../../components/StatsCards';
 import { bestValue } from '../../bests';
 import { colorOf, SPORT_LABELS, SportBadge, tintOf } from '../../components/sport';
 import { Card, Empty } from '../../components/ui';
 import { addDays, fromKey, toKey } from '../../dates';
+import { readinessSeries } from '../../health/readiness';
+import { baseline } from '../../health/summary';
+import { bodyTrend, driftSessions, monthSummary, overnightTrend, weeklyZones, weekEnergy } from '../../statsExtra';
 import { formatClock, formatDistance, formatMinutes, formatSwimPace } from '../../format';
 import { TOTAL_WEEKS } from '../../plan/schedule';
 import { efficiency, formState, highestHeartRate, loadSeries, records, SPORTS, swimsByWater, totals, unitOf, weekVolume } from '../../stats';
@@ -51,11 +55,22 @@ export default function StatsScreen() {
   const best = records(activities, settings.planStart);
   const water = swimsByWater(activities, settings.planStart);
 
+  const zoneWeeks = weeklyZones(activities, settings.planStart, currentWeek, hr.maxHr);
+  const drift = driftSessions(activities, 8);
+  const month = monthSummary(activities, todayKey);
+  const energyNow = weekEnergy(activities, todayKey);
+  const energyLast = weekEnergy(activities, toKey(addDays(fromKey(todayKey), -7)));
+  const readiness = readinessSeries(health, todayKey, 14);
+  const body = bodyTrend(health, todayKey, 56);
+  const overnight = overnightTrend(health, todayKey, 7, baseline(health, 'breathing', todayKey));
+
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.list}>
         <Text style={type.title}>Stats</Text>
+
+        <MonthCard summary={month} />
 
         {SPORTS.map((s) => (
           <Card key={s}>
@@ -78,6 +93,8 @@ export default function StatsScreen() {
             <Text style={type.small}>Weeks of the plan along the bottom.</Text>
           </Card>
         ))}
+
+        <ZonesByWeek weeks={zoneWeeks} />
 
         <Card>
           <Text style={type.heading}>Fitness and fatigue</Text>
@@ -120,6 +137,9 @@ export default function StatsScreen() {
             </Card>
           ) : null,
         )}
+
+        <DriftCard sessions={drift} />
+        <EnergyCard now={energyNow} last={energyLast} />
 
         <Card>
           <Text style={type.heading}>Totals since the plan began</Text>
@@ -166,6 +186,9 @@ export default function StatsScreen() {
         )}
 
         <HealthStats health={health} todayKey={todayKey} />
+        <ReadinessTrend series={readiness} />
+        <BodyCard trend={body} />
+        <OvernightCard trend={overnight} />
 
         {best.length > 0 && (
           <Card>

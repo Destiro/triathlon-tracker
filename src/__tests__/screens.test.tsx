@@ -133,3 +133,11 @@ test('ticking a checklist item on Race passes its id to the store', async () => 
   await fireEvent.press(screen.getByLabelText('Helmet'));
   expect(useStore().toggleChecklist).toHaveBeenCalledWith('bike.0');
 });
+
+test('Today shows a readiness score under last night, from sleep alone when there is no usual to compare with yet', async () => {
+  await render(<TodayScreen />);
+  expect(screen.getByText('Readiness')).toBeTruthy();
+  expect(screen.getByText('88')).toBeTruthy();
+  expect(screen.getByText('Good to go')).toBeTruthy();
+  expect(screen.getByText('Not counted: heart rate, HRV.')).toBeTruthy();
+});

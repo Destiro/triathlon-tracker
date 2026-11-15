@@ -31,6 +31,13 @@ and kept here as the same number in metres.
   how many recent sessions it has to go on. It knows nothing about race-day effort, the course or the weather, and
   hills skew the bike speed because there is no power meter. It reads slow early in the plan. All the numbers are
   named constants at the top of src/prediction.ts.
+- **Pacing plan**: the predicted pace for each leg, with a heart rate ceiling for the bike (80% of max) and run (85%),
+  and the first 5 km of the run held back 10 seconds a km. The numbers are constants at the top of `src/pacing.ts`.
+- **Ready for the distance?**: your longest swim, ride, run and brick so far against the race legs.
+- **Form on race day**: fitness and fatigue carried forward through the rest of the plan, counting each planned workout
+  at the load you usually produce for that sport. It changes when you move, skip or add sessions.
+- **Race checklist**: a 70.3 list for bags, bike and race morning, with room for your own items. Ticks are saved on the
+  phone.
 - **Heart rate zones**: each recorded workout shows its time in five zones, worked out from the watch's heart rate
   readings (about one a second) and your max heart rate (Settings): zone 1 is
   under 60% of max, then 70%, 80% and 90%. Workouts that ask for one effort all the way through (foundation, long,
@@ -46,8 +53,18 @@ and kept here as the same number in metres.
   never altered. The watch ticks a moved workout off on its new day. Strength training, weightlifting,
   calisthenics and HIIT count as gym, from the watch or a gym app such as Hevy; they tick off a gym session, count
   in training load and show in the totals.
-- **Stats**: weekly volume per sport (planned against done), fitness / fatigue / form from heart rate, aerobic
-  efficiency for runs and rides, totals and best efforts.
+- **Stats**: this month so far against the same days of last month, weekly volume per sport (planned against done),
+  time in each heart rate zone by week (and the share that was easy; 80/20 plans aim for 80%), fitness / fatigue /
+  form from heart rate, aerobic efficiency for runs and rides, heart rate drift on long sessions, calories by sport,
+  totals, best efforts, sleep, recovery, VO2 max, a morning readiness trend, and weight, body fat, blood oxygen and
+  breathing when the watch shares them.
+- **Readiness** (Today and Stats): one score out of 100 from last night's sleep (40%), sleeping heart rate against your
+  30-day usual (30%) and HRV against its usual (30%). Sleep scores 0 at 4 hours and 100 at 7.5. A part with nothing to
+  compare with is left out and the card says so. 70 and over is good to go, 45 to 69 take it steady, below that go
+  easy. The weights and limits are named constants at the top of `src/health/readiness.ts`.
+- **Heart rate drift**: for rides and runs over 40 minutes, the average heart rate and speed in the first and second
+  half, after a 10 minute warm-up. Drift is how much more heart rate the same speed took in the second half. Under
+  5% is good. Only workouts read from Health Connect have it.
 - **Settings**: connect Health Connect, back up or restore your history, the race and its date, when week 1
   starts, and your max and resting heart rate.
 
@@ -77,6 +94,10 @@ resting heart rate and HRV, and data older than 30 days. Without that last one H
 - Walks are left out; the watch logs them all day. Exercise types the plan doesn't use are kept as "other".
 - Moving time is not in Health Connect, so it is the distance over the average speed while moving.
 - Samsung Health writes no elevation, so climbing is 0 on new workouts.
+- Calories are read for each workout. When the reader learns something new (the `READ_VERSION` in
+  `src/health/workouts.ts`), workouts saved by the older reader are read again the next time the app syncs.
+- Weight, body fat, lean mass, blood oxygen and breathing rate are asked for too. The watch may not share them; Settings
+  lists what has come through ("none yet" for what hasn't) and the Stats cards only appear when there is data.
 - The **Workout check** screen (Settings) shows exactly what Health Connect holds for your recent workouts.
 
 ## Keeping your history

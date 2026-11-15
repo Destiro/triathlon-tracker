@@ -7,7 +7,7 @@ import { pickBackup, shareBackup } from './backupFile';
 import { addDays, fromKey, toKey } from './dates';
 import * as healthConnect from './health/connect';
 import { HealthByDate, mergeHealth } from './health/summary';
-import { mergeWorkouts, needsReading } from './health/workouts';
+import { mergeWorkouts, needsReading, READ_VERSION } from './health/workouts';
 import { addSessions, applyEdits, NewSession, NO_EDITS, PlanEdits, removeSession, setMove } from './plan/edits';
 import { buildSchedule, Schedule } from './plan/schedule';
 import { DEFAULT_SETTINGS, loadSettings, Settings } from './settings';
@@ -29,6 +29,8 @@ interface Saved {
   lastSync: number | null;
   /** Workouts have been read from Health Connect in full up to this time. Null until the first full read. */
   workoutCursor?: number | null;
+  /** Which version of the workout reader made the saved workouts. Older ones are read again. */
+  readVersion?: number;
   edits: PlanEdits;
   /** Swims you have corrected to pool (false) or open water (true), by activity id. */
   waterOverrides?: Record<string, boolean>;
@@ -93,6 +95,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [waterOverrides, setWaterOverrides] = useState<Record<string, boolean>>({});
   const [lastSync, setLastSync] = useState<number | null>(null);
   const [workoutCursor, setWorkoutCursor] = useState<number | null>(null);
+  const [readVersion, setReadVersion] = useState(READ_VERSION);
   const [edits, setEdits] = useState<PlanEdits>(NO_EDITS);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -118,7 +121,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           setStored(saved.activities ?? []);
           setWaterOverrides(saved.waterOverrides ?? {});
           setLastSync(saved.lastSync ?? null);
-          setWorkoutCursor(saved.workoutCursor ?? null);
+          // Workouts saved by an older reader are missing newer details, so start the next read from the beginning.
+          const current = (saved.readVersion ?? 1) >= READ_VERSION;
+          setWorkoutCursor(current ? (saved.workoutCursor ?? null) : null);
+          setReadVersion(saved.readVersion ?? 1);
           setEdits({ ...NO_EDITS, ...saved.edits });
           setHealth(saved.health ?? {});
           setHealthConnected(saved.healthConnected ?? false);
@@ -140,6 +146,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       activities: stored,
       lastSync,
       workoutCursor,
+      readVersion,
       edits,
       waterOverrides,
       health,
@@ -149,7 +156,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       checklist,
     };
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(saved)).catch(() => {});
-  }, [ready, settings, stored, lastSync, workoutCursor, edits, waterOverrides, health, healthConnected, lastHealthSync, lastBackup, checklist]);
+  }, [ready, settings, stored, lastSync, workoutCursor, readVersion, edits, waterOverrides, health, healthConnected, lastHealthSync, lastBackup, checklist]);
 
   // The workout read decides what to skip from what is saved at that moment, which the callback can't see as state.
   useEffect(() => {
@@ -192,7 +199,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setLastSync(now);
       setPastDataAllowed(!result.clipped);
       // Move on only once everything back to `since` has been read; until then each read starts from the same place.
-      if (result.complete && !result.clipped) setWorkoutCursor(now);
+      if (result.complete && !result.clipped) {
+        setWorkoutCursor(now);
+        setReadVersion(READ_VERSION);
+      }
       setSyncError(result.complete ? null : 'Some workouts are still to come. Pull down in a few minutes to read the rest.');
     } catch (e) {
       setSyncError(e instanceof healthConnect.HealthError ? e.message : 'Could not read workouts from Health Connect.');

@@ -5,7 +5,7 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'r
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ring } from '../../components/charts';
 import { DayWorkouts } from '../../components/DayWorkouts';
-import { LastNight } from '../../components/HealthCards';
+import { LastNight, ReadinessToday } from '../../components/HealthCards';
 import { colorOf, SPORT_LABELS, tintOf } from '../../components/sport';
 import { Button, Card, Empty } from '../../components/ui';
 import { WeekStrip } from '../../components/WeekStrip';
@@ -74,6 +74,7 @@ export default function TodayScreen() {
         )}
 
         <LastNight health={health} date={todayKey} />
+        <ReadinessToday health={health} date={todayKey} />
 
         {bests.map((b) => (
           <View key={b.label} style={[styles.best, { borderColor: colors.warning }]} accessibilityLabel={`New best: ${b.label}`}>

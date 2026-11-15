@@ -32,6 +32,15 @@ export interface HealthDay {
   restingHr?: number;
   /** Overnight heart rate variability (RMSSD), in milliseconds. */
   hrv?: number;
+  /** Body weight and composition, from the latest reading that day. */
+  weightKg?: number;
+  bodyFat?: number;
+  leanKg?: number;
+  /** Blood oxygen while asleep: the average and the lowest reading, in percent. */
+  spo2?: number;
+  spo2Low?: number;
+  /** Breaths a minute while asleep. */
+  breathing?: number;
 }
 
 export type HealthByDate = Record<string, HealthDay>;
@@ -153,6 +162,10 @@ export function combine(parts: {
   vo2Max?: Record<string, number>;
   restingHr?: Record<string, number>;
   hrv?: Record<string, number>;
+  weight?: Record<string, number>;
+  bodyFat?: Record<string, number>;
+  lean?: Record<string, number>;
+  overnight?: Record<string, { spo2?: number; spo2Low?: number; breathing?: number }>;
 }): HealthByDate {
   const out: HealthByDate = {};
   const day = (date: string) => (out[date] ??= { date });
@@ -160,6 +173,38 @@ export function combine(parts: {
   for (const [date, v] of Object.entries(parts.vo2Max ?? {})) day(date).vo2Max = Math.round(v * 10) / 10;
   for (const [date, v] of Object.entries(parts.restingHr ?? {})) day(date).restingHr = Math.round(v);
   for (const [date, v] of Object.entries(parts.hrv ?? {})) day(date).hrv = Math.round(v);
+  for (const [date, v] of Object.entries(parts.weight ?? {})) day(date).weightKg = Math.round(v * 10) / 10;
+  for (const [date, v] of Object.entries(parts.bodyFat ?? {})) day(date).bodyFat = Math.round(v * 10) / 10;
+  for (const [date, v] of Object.entries(parts.lean ?? {})) day(date).leanKg = Math.round(v * 10) / 10;
+  for (const [date, o] of Object.entries(parts.overnight ?? {})) {
+    if (o.spo2 !== undefined) day(date).spo2 = Math.round(o.spo2 * 10) / 10;
+    if (o.spo2Low !== undefined) day(date).spo2Low = Math.round(o.spo2Low);
+    if (o.breathing !== undefined) day(date).breathing = Math.round(o.breathing * 10) / 10;
+  }
+  return out;
+}
+
+/**
+ * Files readings taken during the night under the night they belong to (the date you woke up): average and lowest for
+ * blood oxygen, average for breathing. Readings outside every night are left out.
+ */
+export function overnightReadings(
+  nights: Record<string, Night>,
+  spo2: Reading[],
+  breathing: Reading[],
+): Record<string, { spo2?: number; spo2Low?: number; breathing?: number }> {
+  const out: Record<string, { spo2?: number; spo2Low?: number; breathing?: number }> = {};
+  const within = (readings: Reading[], night: Night) =>
+    readings.filter((r) => Number.isFinite(r.value) && r.value > 0 && r.time >= night.start && r.time <= night.end).map((r) => r.value);
+  for (const [date, night] of Object.entries(nights)) {
+    const o2 = within(spo2, night);
+    const br = within(breathing, night);
+    if (o2.length === 0 && br.length === 0) continue;
+    out[date] = {
+      ...(o2.length ? { spo2: o2.reduce((a, b) => a + b, 0) / o2.length, spo2Low: Math.min(...o2) } : {}),
+      ...(br.length ? { breathing: br.reduce((a, b) => a + b, 0) / br.length } : {}),
+    };
+  }
   return out;
 }
 
@@ -183,7 +228,7 @@ const BASELINE_DAYS = 30;
 // A baseline from fewer days than this is mostly noise.
 const MIN_BASELINE_DAYS = 7;
 
-type Metric = 'asleepMin' | 'sleepingHr' | 'restingHr' | 'hrv';
+export type Metric = 'asleepMin' | 'sleepingHr' | 'restingHr' | 'hrv' | 'breathing' | 'spo2';
 
 const valueOf = (day: HealthDay | undefined, metric: Metric): number | undefined =>
   metric === 'asleepMin' || metric === 'sleepingHr' ? day?.sleep?.[metric] : day?.[metric];
