@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, byDate } from './activities';
+import { addItem, ChecklistState, NO_CHECKLIST, removeItem, toggleItem } from './checklist';
 import { BackupData, BackupError, backupFileName, makeBackup, readBackup, restoreInto } from './backup';
 import { pickBackup, shareBackup } from './backupFile';
 import { addDays, fromKey, toKey } from './dates';
@@ -35,6 +36,7 @@ interface Saved {
   healthConnected?: boolean;
   lastHealthSync?: number | null;
   lastBackup?: number | null;
+  checklist?: ChecklistState;
 }
 
 interface Store {
@@ -75,6 +77,10 @@ interface Store {
   exportBackup: () => Promise<string>;
   /** Picks a backup file and restores it into what the phone has. Resolves to a message to show. */
   restoreBackup: () => Promise<string>;
+  checklist: ChecklistState;
+  toggleChecklist: (id: string) => void;
+  addChecklist: (text: string) => void;
+  removeChecklist: (id: string) => void;
 }
 
 const StoreContext = createContext<Store | null>(null);
@@ -100,6 +106,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [healthError, setHealthError] = useState<string | null>(null);
   const healthSyncingRef = useRef(false);
   const [lastBackup, setLastBackup] = useState<number | null>(null);
+  const [checklist, setChecklist] = useState<ChecklistState>(NO_CHECKLIST);
 
   useEffect(() => {
     (async () => {
@@ -117,6 +124,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           setHealthConnected(saved.healthConnected ?? false);
           setLastHealthSync(saved.lastHealthSync ?? null);
           setLastBackup(saved.lastBackup ?? null);
+          setChecklist({ ...NO_CHECKLIST, ...saved.checklist });
         }
       } catch {
         // Unreadable save: start fresh rather than refusing to open.
@@ -138,9 +146,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       healthConnected,
       lastHealthSync,
       lastBackup,
+      checklist,
     };
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(saved)).catch(() => {});
-  }, [ready, settings, stored, lastSync, workoutCursor, edits, waterOverrides, health, healthConnected, lastHealthSync, lastBackup]);
+  }, [ready, settings, stored, lastSync, workoutCursor, edits, waterOverrides, health, healthConnected, lastHealthSync, lastBackup, checklist]);
 
   // The workout read decides what to skip from what is saved at that moment, which the callback can't see as state.
   useEffect(() => {
@@ -248,6 +257,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setSyncError(null);
   }, []);
 
+  const toggleChecklist = useCallback((id: string) => setChecklist((c) => toggleItem(c, id)), []);
+  const addChecklist = useCallback((text: string) => setChecklist((c) => addItem(c, text, Math.random().toString(36).slice(2, 10))), []);
+  const removeChecklist = useCallback((id: string) => setChecklist((c) => removeItem(c, id)), []);
+
   const backupData = (): BackupData => ({ settings, activities: stored, edits, waterOverrides, health });
 
   const exportBackup = async (): Promise<string> => {
@@ -305,6 +318,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     lastBackup,
     exportBackup,
     restoreBackup,
+    checklist,
+    toggleChecklist,
+    addChecklist,
+    removeChecklist,
   };
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

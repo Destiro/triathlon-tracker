@@ -20,7 +20,7 @@ jest.mock('../store', () => {
   const schedule = buildSchedule(settings.planStart, settings.raceDate, settings.raceName);
   return {
     useTodayKey: () => mockToday,
-    useStore: () => ({ settings, schedule, activities: mockActivities }),
+    useStore: () => ({ settings, schedule, activities: mockActivities, checklist: { done: {}, extra: [] }, toggleChecklist: jest.fn(), addChecklist: jest.fn(), removeChecklist: jest.fn() }),
   };
 });
 
