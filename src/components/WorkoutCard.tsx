@@ -40,19 +40,28 @@ export interface CardAction {
 
 interface Props {
   result: WorkoutResult;
-  /** Show the warm-up / main set / cool-down lines. */
+  /** Show the warm-up / main set / cool-down lines and the actions. */
   detailed?: boolean;
   actions?: CardAction[];
+  /** Makes the top of the card a button that opens or closes it. */
+  onToggle?: () => void;
 }
 
-export function WorkoutCard({ result, detailed, actions }: Props) {
+export function WorkoutCard({ result, detailed, actions, onToggle }: Props) {
   const { workout, status, activities } = result;
   const s = STATUS[status];
   const blocks = detailed ? stepBlocks(workout) : null;
   const unit = workout.kind === 'swim' ? ' yd' : ' min';
   return (
     <View style={[styles.card, { borderLeftColor: colorOf(workout.kind) }]}>
-      <View style={styles.row}>
+      <Pressable
+        onPress={onToggle}
+        disabled={!onToggle}
+        style={styles.row}
+        accessibilityRole={onToggle ? 'button' : undefined}
+        accessibilityLabel={onToggle ? `${workout.title}, ${s.label}, ${detailed ? 'open' : 'closed'}` : undefined}
+        accessibilityState={onToggle ? { expanded: Boolean(detailed) } : undefined}
+      >
         <SportBadge kind={workout.kind} />
         <View style={styles.main}>
           <Text style={type.heading}>{workout.title}</Text>
@@ -65,10 +74,11 @@ export function WorkoutCard({ result, detailed, actions }: Props) {
             <Text style={styles.moved}>Moved from {fromKey(workout.movedFrom).toLocaleDateString(undefined, { weekday: 'long' })}</Text>
           )}
         </View>
-        <View style={styles.status} accessibilityLabel={s.label}>
+        <View style={styles.status} accessibilityLabel={onToggle ? undefined : s.label}>
           <MaterialCommunityIcons name={s.icon as never} size={26} color={s.color} />
         </View>
-      </View>
+        {onToggle && <MaterialCommunityIcons name={detailed ? 'chevron-up' : 'chevron-down'} size={22} color={colors.inkSoft} />}
+      </Pressable>
 
       {activities.map((a) => (
         <Text key={a.id} style={styles.done}>
@@ -100,7 +110,7 @@ export function WorkoutCard({ result, detailed, actions }: Props) {
         </View>
       )}
 
-      {actions?.map((a) => (
+      {detailed && actions?.map((a) => (
         <Pressable key={a.label} onPress={a.onPress} style={({ pressed }) => [styles.action, pressed && { opacity: 0.6 }]} accessibilityRole="button">
           <MaterialCommunityIcons name={a.icon as never} size={18} color={a.danger ? colors.danger : colors.accent} />
           <Text style={[styles.actionLabel, a.danger && { color: colors.danger }]}>{a.label}</Text>

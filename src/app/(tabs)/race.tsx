@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colorOf, SPORT_LABELS, tintOf } from '../../components/sport';
 import { ChecklistCard, FormCard, ReadinessCard } from '../../components/RaceCards';
+import { FixedBody, OneCard } from '../../components/layout';
 import { Card, Segments } from '../../components/ui';
 import { daysBetween, fromKey } from '../../dates';
 import { formatClock, formatHoursMinutes, formatRunPace, formatSpeed, formatSwimPace } from '../../format';
@@ -75,24 +76,28 @@ export default function RaceScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.list}>
+      <View style={styles.header}>
         <View>
           <Text style={type.small}>{fromKey(settings.raceDate).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</Text>
           <Text style={type.title}>{settings.raceName}</Text>
         </View>
         <Segments options={PAGES} value={page} onChange={setPage} />
+      </View>
 
+      <FixedBody>
         {page === 'day' && (
           <>
             <Card style={styles.countdown}>
               {daysToGo > 0 ? (
                 <>
                   <Text style={styles.big}>{daysToGo}</Text>
-                  <Text style={type.body}>{daysToGo === 1 ? 'day to go' : 'days to go'}</Text>
-                  <Text style={type.small}>
-                    {Math.floor(daysToGo / 7)} weeks and {daysToGo % 7} days
-                    {currentWeek >= 1 && currentWeek <= TOTAL_WEEKS ? ` · you're in week ${currentWeek} of ${TOTAL_WEEKS}` : ''}
-                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={type.body}>{daysToGo === 1 ? 'day to go' : 'days to go'}</Text>
+                    <Text style={type.small}>
+                      {Math.floor(daysToGo / 7)} weeks and {daysToGo % 7} days
+                      {currentWeek >= 1 && currentWeek <= TOTAL_WEEKS ? ` · week ${currentWeek} of ${TOTAL_WEEKS}` : ''}
+                    </Text>
+                  </View>
                 </>
               ) : (
                 <Text style={styles.big}>{daysToGo === 0 ? 'Race day' : 'Done'}</Text>
@@ -135,7 +140,10 @@ export default function RaceScreen() {
         )}
 
         {page === 'ready' && (
-          <>
+          <OneCard
+            key="ready"
+            cards={[
+              { key: 'road', label: 'The road', node: (
             <Card title="The road there" note="Each block is a week. Faded ones are still to come.">
               <View style={styles.weeks}>
                 {weeks.map(({ week, phase }) => (
@@ -158,24 +166,24 @@ export default function RaceScreen() {
                   </View>
                 ))}
               </View>
-            </Card>
-            <ReadinessCard longest={longest} race={raceDistances} />
-            <FormCard projection={projection} />
-          </>
+            </Card> ) },
+              { key: 'distance', label: 'Distance', node: <ReadinessCard longest={longest} race={raceDistances} /> },
+              { key: 'form', label: 'Form', node: <FormCard projection={projection} /> },
+            ]}
+          />
         )}
 
         {page === 'checklist' && <ChecklistCard state={checklist} onToggle={toggleChecklist} onAdd={addChecklist} onRemove={removeChecklist} />}
-        <View style={{ height: spacing.md }} />
-      </ScrollView>
+      </FixedBody>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  list: { padding: spacing.lg, gap: spacing.md },
-  countdown: { alignItems: 'center', paddingVertical: spacing.xl },
-  big: { ...type.hero, fontSize: 64, lineHeight: 72 },
+  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, gap: spacing.sm, paddingBottom: spacing.sm },
+  countdown: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  big: { ...type.hero, fontSize: 44, lineHeight: 52 },
   leg: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderLeftWidth: 5, borderRadius: radius.sm, paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
   predicted: { alignItems: 'center', gap: 2, paddingVertical: spacing.sm },
   confidence: { fontSize: 12, fontWeight: '600', textAlign: 'center' },

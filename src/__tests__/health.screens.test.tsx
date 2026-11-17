@@ -67,9 +67,12 @@ jest.mock('../store', () => {
 test('the Health page on Stats shows sleep, recovery and VO2 max, with no workouts needed', async () => {
   await render(<StatsScreen />);
   await fireEvent.press(screen.getByText('Health'));
-  expect(screen.getAllByText('Sleep').length).toBeGreaterThan(0);
-  expect(screen.getByText('Recovery')).toBeTruthy();
-  expect(screen.getAllByText('VO2 max').length).toBeGreaterThan(0);
+  // One card at a time, each a button away.
+  await fireEvent.press(screen.getByText('Sleep'));
+  expect(screen.getByText(/Hours asleep, last 14 nights/)).toBeTruthy();
+  await fireEvent.press(screen.getByText('Recovery'));
+  expect(screen.getByText(/Overnight heart rate falling and HRV rising/)).toBeTruthy();
+  await fireEvent.press(screen.getByText('VO2 max'));
   expect(screen.getByText('48.6')).toBeTruthy();
   expect(screen.getByText(/\+1\.4 in 90 days/)).toBeTruthy();
 });

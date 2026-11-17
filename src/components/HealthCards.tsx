@@ -84,67 +84,83 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** Sleep, recovery and VO2 max trends for the Health tab. Draws nothing for data the watch doesn't provide. */
-export function HealthStats({ health, todayKey }: { health: HealthByDate; todayKey: string }) {
+/** Hours asleep for each of the last two weeks. Null until there is a night to show. */
+export function SleepCard({ health, todayKey }: { health: HealthByDate; todayKey: string }) {
   const nights = healthSeries(health, toKey(addDays(fromKey(todayKey), -(SLEEP_NIGHTS - 1))), todayKey);
-  const trend = healthSeries(health, toKey(addDays(fromKey(todayKey), -(TREND_DAYS - 1))), todayKey);
   const slept = nights.filter((d) => d.sleep);
-  const average = slept.length ? slept.reduce((s, d) => s + d.sleep!.asleepMin, 0) / slept.length : 0;
+  if (slept.length === 0) return null;
+  const average = slept.reduce((s, d) => s + d.sleep!.asleepMin, 0) / slept.length;
+  return (
+    <Card title="Sleep" note={`Hours asleep, last ${SLEEP_NIGHTS} nights. Average ${formatMinutes(average)}.`}>
+      <BarChart
+        color={healthColors.sleep}
+        tint={colors.accentSoft}
+        format={(v) => `${(v / 60).toFixed(v % 60 ? 1 : 0)}h`}
+        groups={nights.map((d) => ({
+          label: String(fromKey(d.date).getDate()),
+          actual: d.sleep?.asleepMin ?? 0,
+          highlight: d.date === todayKey,
+        }))}
+      />
+    </Card>
+  );
+}
 
+const recoverySeries = (health: HealthByDate, todayKey: string) => {
+  const trend = healthSeries(health, toKey(addDays(fromKey(todayKey), -(TREND_DAYS - 1))), todayKey);
   const sleepingHr = trend.map((d) => d.sleep?.sleepingHr ?? d.restingHr ?? null);
   const hrv = trend.map((d) => d.hrv ?? null);
-  const hasHr = sleepingHr.filter((v) => v !== null).length >= 3;
-  const hasHrv = hrv.filter((v) => v !== null).length >= 3;
+  return {
+    labels: trend.map((d) => shortDate(d.date)),
+    sleepingHr,
+    hrv,
+    hasHr: sleepingHr.filter((v) => v !== null).length >= 3,
+    hasHrv: hrv.filter((v) => v !== null).length >= 3,
+  };
+};
+
+/** Whether there is enough overnight heart rate or HRV for the Recovery card. */
+export const hasRecovery = (health: HealthByDate, todayKey: string): boolean => {
+  const r = recoverySeries(health, todayKey);
+  return r.hasHr || r.hasHrv;
+};
+
+/** Overnight heart rate and HRV over three months. */
+export function RecoveryCard({ health, todayKey }: { health: HealthByDate; todayKey: string }) {
+  const { labels, sleepingHr, hrv, hasHr, hasHrv } = recoverySeries(health, todayKey);
+  if (!hasHr && !hasHrv) return null;
+  return (
+    <Card title="Recovery" note="Overnight heart rate falling and HRV rising mean you are absorbing the training. A sudden jump the other way often comes before illness or overreaching.">
+      {hasHr && <LineChart labels={labels} format={(v) => String(Math.round(v))} series={[{ label: 'Sleeping heart rate (bpm)', color: healthColors.heart, values: sleepingHr }]} />}
+      {hasHrv && <LineChart labels={labels} format={(v) => String(Math.round(v))} series={[{ label: 'HRV (ms)', color: healthColors.hrv, values: hrv }]} />}
+    </Card>
+  );
+}
+
+/** The latest VO2 max and how it has moved. Null until the watch has shared one. */
+export function Vo2Card({ health, todayKey }: { health: HealthByDate; todayKey: string }) {
+  const trend = healthSeries(health, toKey(addDays(fromKey(todayKey), -(TREND_DAYS - 1))), todayKey);
   const vo2Points = trend.filter((d) => d.vo2Max !== undefined);
   const vo2Now = latest(health, 'vo2Max', todayKey);
+  if (!vo2Now) return null;
   const vo2Start = vo2Points[0]?.vo2Max;
-  const labels = trend.map((d) => shortDate(d.date));
-
   return (
-    <>
-      {slept.length > 0 && (
-        <Card title="Sleep" note={`Hours asleep, last ${SLEEP_NIGHTS} nights. Average ${formatMinutes(average)}.`}>
-          <BarChart
-            color={healthColors.sleep}
-            tint={colors.accentSoft}
-            format={(v) => `${(v / 60).toFixed(v % 60 ? 1 : 0)}h`}
-            groups={nights.map((d) => ({
-              label: String(fromKey(d.date).getDate()),
-              actual: d.sleep?.asleepMin ?? 0,
-              highlight: d.date === todayKey,
-            }))}
-          />
-        </Card>
+    <Card title="VO2 max" note="Estimated by your watch from runs with heart rate. It moves slowly: look at the trend over weeks.">
+      <View style={styles.between}>
+        <Text style={type.number}>{vo2Now.value.toFixed(1)}</Text>
+        <Text style={type.small}>
+          ml/kg/min · {shortDate(vo2Now.date)}
+          {vo2Start !== undefined && vo2Points.length > 1 ? ` · ${vo2Now.value - vo2Start >= 0 ? '+' : ''}${(vo2Now.value - vo2Start).toFixed(1)} in ${TREND_DAYS} days` : ''}
+        </Text>
+      </View>
+      {vo2Points.length >= 2 && (
+        <LineChart
+          labels={vo2Points.map((d) => shortDate(d.date))}
+          format={(v) => v.toFixed(0)}
+          series={[{ label: 'VO2 max', color: healthColors.vo2, values: vo2Points.map((d) => d.vo2Max!) }]}
+        />
       )}
-
-      {(hasHr || hasHrv) && (
-        <Card title="Recovery" note="Overnight heart rate falling and HRV rising mean you are absorbing the training. A sudden jump the other way often comes before illness or overreaching.">
-          {hasHr && (
-            <LineChart labels={labels} format={(v) => String(Math.round(v))} series={[{ label: 'Sleeping heart rate (bpm)', color: healthColors.heart, values: sleepingHr }]} />
-          )}
-          {hasHrv && <LineChart labels={labels} format={(v) => String(Math.round(v))} series={[{ label: 'HRV (ms)', color: healthColors.hrv, values: hrv }]} />}
-        </Card>
-      )}
-
-      {vo2Now && (
-        <Card title="VO2 max" note="Estimated by your watch from runs with heart rate. It moves slowly: look at the trend over weeks.">
-          <View style={styles.between}>
-            <Text style={type.number}>{vo2Now.value.toFixed(1)}</Text>
-            <Text style={type.small}>
-              ml/kg/min · {shortDate(vo2Now.date)}
-              {vo2Start !== undefined && vo2Points.length > 1 ? ` · ${vo2Now.value - vo2Start >= 0 ? '+' : ''}${(vo2Now.value - vo2Start).toFixed(1)} in ${TREND_DAYS} days` : ''}
-            </Text>
-          </View>
-          {vo2Points.length >= 2 && (
-            <LineChart
-              labels={vo2Points.map((d) => shortDate(d.date))}
-              format={(v) => v.toFixed(0)}
-              series={[{ label: 'VO2 max', color: healthColors.vo2, values: vo2Points.map((d) => d.vo2Max!) }]}
-            />
-          )}
-        </Card>
-      )}
-    </>
+    </Card>
   );
 }
 

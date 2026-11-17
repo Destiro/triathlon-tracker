@@ -44,10 +44,11 @@ beforeEach(() => {
 
 test('moving the run to another day sends its id, the new day and the day it was planned for', async () => {
   await render(<DayScreen />);
-  const moveButtons = screen.getAllByText('Move to another day');
-  expect(moveButtons).toHaveLength(2);
-
-  await fireEvent.press(moveButtons[1]); // the Foundation Run
+  // The swim, first still to do, is open; the run is one line until it is tapped.
+  expect(screen.getAllByText('Move to another day')).toHaveLength(1);
+  await fireEvent.press(screen.getByText('Foundation Run'));
+  expect(screen.getAllByText('Move to another day')).toHaveLength(1);
+  await fireEvent.press(screen.getByText('Move to another day'));
   expect(await screen.findByText('Move to…')).toBeTruthy();
   await fireEvent.press(screen.getByLabelText('Sat, 7 Nov'));
 
@@ -71,8 +72,11 @@ test('a session of your own can be removed, and a repeating one asks how much to
   mockDate = '2026-11-05';
   await render(<DayScreen />);
   expect(screen.getByText(/added by you/)).toBeTruthy();
-  // The plan's own Thursday ride can be moved but not removed, so there is one Remove for two workouts.
-  expect(screen.getAllByText('Move to another day')).toHaveLength(2);
+  // The plan's own Thursday ride is open first; it can be moved but not removed.
+  expect(screen.getAllByText('Move to another day')).toHaveLength(1);
+  expect(screen.queryByText('Remove')).toBeNull();
+  await fireEvent.press(screen.getByText('Legs'));
+  expect(screen.getAllByText('Move to another day')).toHaveLength(1);
   expect(screen.getAllByText('Remove')).toHaveLength(1);
 
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});

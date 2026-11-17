@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { bestValue } from '../../bests';
 import { BarChart, LineChart } from '../../components/charts';
 import { HealthPage } from '../../components/HealthPage';
+import { FixedBody, OneCard } from '../../components/layout';
 import { colorOf, SPORT_LABELS, SportBadge, tintOf } from '../../components/sport';
 import { DriftCard, EnergyCard, MonthCard, ZonesByWeek } from '../../components/StatsCards';
 import { Card, Chips, Empty, Segments } from '../../components/ui';
@@ -42,11 +43,11 @@ export default function StatsScreen() {
   if (activities.length === 0) {
     return (
       <SafeAreaView style={styles.screen} edges={['top']}>
-        <ScrollView contentContainerStyle={styles.list}>
+        <View style={styles.header}>
           <Text style={type.title}>Stats</Text>
           <Segments options={PAGES} value={page} onChange={setPage} />
-          {page === 'health' ? <HealthPage /> : <Empty text="Connect Health Connect in Settings and your workouts will fill in the charts here." />}
-        </ScrollView>
+        </View>
+        <FixedBody>{page === 'health' ? <HealthPage /> : <Empty text="Connect Health Connect in Settings and your workouts will fill in the charts here." />}</FixedBody>
       </SafeAreaView>
     );
   }
@@ -76,14 +77,18 @@ export default function StatsScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.list}>
+      <View style={styles.header}>
         <Text style={type.title}>Stats</Text>
         <Segments options={PAGES} value={page} onChange={setPage} />
+      </View>
+      <FixedBody>
 
         {page === 'progress' && (
-          <>
-            <MonthCard summary={month} />
-
+          <OneCard
+            key="progress"
+            cards={[
+              { key: 'month', label: 'Month', show: month.thisMonth.sessions > 0 || month.previousSameDays.sessions > 0, node: <MonthCard summary={month} /> },
+              { key: 'volume', label: 'Volume', node: (
             <Card title="Volume per week" note="Faded bar: planned. Solid bar: done. Weeks of the plan along the bottom.">
               <Chips options={SPORT_CHIPS} value={volumeSport} onChange={setVolumeSport} colorOf={colorOf} />
               <BarChart
@@ -97,10 +102,9 @@ export default function StatsScreen() {
                   highlight: w === currentWeek,
                 }))}
               />
-            </Card>
-
-            <ZonesByWeek weeks={zoneWeeks} />
-
+            </Card> ) },
+              { key: 'zones', label: 'Zones', show: zoneWeeks.length > 0, node: <ZonesByWeek weeks={zoneWeeks} /> },
+              { key: 'fitness', label: 'Fitness', node: (
             <Card title="Fitness and form" note="Training load from heart rate. Fitness builds slowly; fatigue rises and falls with each week. Form is fitness minus fatigue, and should climb above zero in the taper.">
               <Chips
                 options={[
@@ -125,10 +129,9 @@ export default function StatsScreen() {
                 Fitness {Math.round(now.fitness)} · Fatigue {Math.round(now.fatigue)} · Form {Math.round(now.form)}
               </Text>
               <Text style={type.small}>{formState(now.form)}</Text>
-            </Card>
-
-            {shownEff && (
-              <Card title="Efficiency" note="Metres per heartbeat on sessions over 20 minutes. Rising means the same effort takes you further.">
+            </Card> ) },
+              { key: 'efficiency', label: 'Efficiency', show: Boolean(shownEff), node: !shownEff ? null : (
+            <Card title="Efficiency" note="Metres per heartbeat on sessions over 20 minutes. Rising means the same effort takes you further.">
                 {effSports.length > 1 && (
                   <Chips options={effSports.map((s) => ({ value: s, label: SPORT_LABELS[s] }))} value={shownEff} onChange={setEffSport} colorOf={colorOf} />
                 )}
@@ -137,18 +140,19 @@ export default function StatsScreen() {
                   format={(v) => v.toFixed(2)}
                   series={[{ label: SPORT_LABELS[shownEff], color: colorOf(shownEff), values: eff[shownEff].map((p) => p.value) }]}
                 />
-              </Card>
-            )}
-
-            <DriftCard sessions={drift} />
-            <EnergyCard now={energyNow} last={energyLast} />
-          </>
+              </Card> ) },
+              { key: 'drift', label: 'Drift', show: drift.length > 0, node: <DriftCard sessions={drift} /> },
+              { key: 'energy', label: 'Energy', show: energyNow.total > 0 || energyLast.total > 0, node: <EnergyCard now={energyNow} last={energyLast} /> },
+            ]}
+          />
         )}
 
         {page === 'records' && (
-          <>
-            {best.length > 0 && (
-              <Card title="Best efforts">
+          <OneCard
+            key="records"
+            cards={[
+              { key: 'best', label: 'Best efforts', show: best.length > 0, node: (
+            <Card title="Best efforts">
                 {best.map((b) => (
                   <View key={b.label} style={styles.totalRow}>
                     <SportBadge kind={b.sport} size={28} />
@@ -160,9 +164,8 @@ export default function StatsScreen() {
                     </View>
                   </View>
                 ))}
-              </Card>
-            )}
-
+              </Card> ) },
+              { key: 'totals', label: 'Totals', node: (
             <Card title="Totals since the plan began">
               {[...SPORTS, 'gym' as const].map((s) => {
                 const t = sinceStart[s];
@@ -183,10 +186,9 @@ export default function StatsScreen() {
                   </View>
                 );
               })}
-            </Card>
-
-            {water.pool.count + water.open.count > 0 && (
-              <Card title="Pool and open water" note="From the swim type the watch recorded. Tap a swim on its day to change it.">
+            </Card> ) },
+              { key: 'water', label: 'Pool / open', show: water.pool.count + water.open.count > 0, node: (
+            <Card title="Pool and open water" note="From the swim type the watch recorded. Tap a swim on its day to change it.">
                 {([
                   ['Pool', water.pool],
                   ['Open water', water.open],
@@ -201,19 +203,19 @@ export default function StatsScreen() {
                     </View>
                   </View>
                 ))}
-              </Card>
-            )}
-          </>
+              </Card> ) },
+            ]}
+          />
         )}
-        {page === 'health' && <HealthPage />}
-        <View style={{ height: spacing.md }} />
-      </ScrollView>
+
+        {page === 'health' && <HealthPage key="health" />}
+      </FixedBody>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  list: { padding: spacing.lg, gap: spacing.md },
+  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, gap: spacing.sm, paddingBottom: spacing.sm },
   totalRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: 2 },
 });

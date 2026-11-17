@@ -65,20 +65,38 @@ jest.mock('../store', () => {
   return { useTodayKey: () => mockToday, useStore: () => store };
 });
 
-test('Today shows every workout for the day at once, with its detail', async () => {
+test('Today lists every workout, with the first one still to do open and the rest a line each', async () => {
   await render(<TodayScreen />);
+  // Both workouts are listed.
   expect(screen.getByText('Swim Fartlek + Sprint')).toBeTruthy();
   expect(screen.getByText('Foundation Run')).toBeTruthy();
-  // The run's steps and the recorded swim are on the page, so there is nothing to open.
+  // The swim is done, so the run is the one open: its steps and the warm-up / main set / cool-down bar are showing.
   expect(screen.getByText('MS: 20 min @ moderate aerobic intensity')).toBeTruthy();
-  expect(screen.getByText('Morning Swim')).toBeTruthy();
-  // The warm-up / main set / cool-down bar has units on every part and states the whole amount.
-  expect(screen.getByText('Main 800 yd')).toBeTruthy();
   expect(screen.getByText('Main 20 min')).toBeTruthy();
-  expect(screen.getByText('1,400 yd in total')).toBeTruthy();
   expect(screen.getByText('40 min in total')).toBeTruthy();
-  expect(screen.getByText('This week')).toBeTruthy();
+  // The swim's steps are not.
+  expect(screen.queryByText('Main 800 yd')).toBeNull();
+  expect(screen.queryByText('Morning Swim')).toBeNull();
   for (const gone of ['UP NEXT', 'Up next', 'Later today', 'Done today']) expect(screen.queryByText(gone)).toBeNull();
+});
+
+test('tapping the other workout on Today opens it and closes the first', async () => {
+  await render(<TodayScreen />);
+  await fireEvent.press(screen.getByText('Swim Fartlek + Sprint'));
+  expect(screen.getByText('Main 800 yd')).toBeTruthy();
+  expect(screen.getByText('1,400 yd in total')).toBeTruthy();
+  expect(screen.getByText('Morning Swim')).toBeTruthy();
+  expect(screen.queryByText('Main 20 min')).toBeNull();
+});
+
+test('Today is two buttons, Today and This week, and the week page has the rings and strip', async () => {
+  await render(<TodayScreen />);
+  expect(screen.queryByText('This week', { exact: true })).toBeTruthy(); // the button
+  expect(screen.queryByText('Swim', { exact: true })).toBeNull();
+  await fireEvent.press(screen.getByText('This week'));
+  expect(screen.getByText(/of \d+ done|Nothing due yet/)).toBeTruthy();
+  // The workouts are on the other page.
+  expect(screen.queryByText('Foundation Run')).toBeNull();
 });
 
 test('Today has no sleep card: that lives on the Health page of Stats', async () => {
@@ -95,9 +113,11 @@ test('the cog on Today opens Settings, which is no longer a tab', async () => {
 
 test('tapping a workout on Today does not open another screen, and the run can be moved from its card', async () => {
   await render(<TodayScreen />);
+  // The run is the open one, so its Move row is already there; tapping the workout opens no other screen.
   await fireEvent.press(screen.getByText('Foundation Run'));
   expect(router.push).not.toHaveBeenCalled();
-  // The swim is done so it stays put; only the run has a Move row.
+  await fireEvent.press(screen.getByText('Foundation Run'));
+  // The swim is done so it has no Move row; the run, open, has the only one.
   expect(screen.getAllByText('Move to another day')).toHaveLength(1);
   await fireEvent.press(screen.getByText('Move to another day'));
   expect(await screen.findByText('Move to…')).toBeTruthy();
@@ -127,11 +147,12 @@ test('Race is split into Race day, Ready? and Checklist pages, one at a time', a
   expect(screen.queryByText('Race checklist')).toBeNull();
 
   await fireEvent.press(screen.getByText('Ready?'));
-  expect(screen.getByText('Ready for the distance?')).toBeTruthy();
+  // The road is the first card, and the others are a button away.
   expect(screen.getByText('The road there')).toBeTruthy();
-  // The road is the first card on the page, above readiness.
-  const page = JSON.stringify(screen.toJSON());
-  expect(page.indexOf('The road there')).toBeLessThan(page.indexOf('Ready for the distance?'));
+  expect(screen.queryByText('Ready for the distance?')).toBeNull();
+  await fireEvent.press(screen.getByText('Distance'));
+  expect(screen.getByText('Ready for the distance?')).toBeTruthy();
+  expect(screen.queryByText('The road there')).toBeNull();
   expect(screen.queryByText('Predicted finish and pacing')).toBeNull();
 
   await fireEvent.press(screen.getByText('Checklist'));

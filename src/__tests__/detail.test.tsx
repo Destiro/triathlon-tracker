@@ -73,6 +73,8 @@ test('an activity without a heart rate breakdown shows no zones', async () => {
 test('a swim shows whether it was a pool or open water, and tapping corrects it', async () => {
   mockDate = '2026-11-06';
   await render(<DayScreen />);
+  // The swim is done, so the run is open; open the swim to see its recording.
+  await fireEvent.press(screen.getByText('Swim Fartlek + Sprint'));
   const tag = screen.getByLabelText('Swim recorded in a pool. Tap to change.');
   expect(screen.getByText('Pool')).toBeTruthy();
   await fireEvent.press(tag);

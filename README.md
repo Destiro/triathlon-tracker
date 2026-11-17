@@ -17,12 +17,14 @@ and shown in yards here. They are converted to metres (0.9144 m per yard) only t
 
 ## What it does
 
-Four tabs: Today, Plan, Stats and Race. Settings opens from the cog at the top right of Today. Stats and Race each
-have a switch at the top that splits them into short pages, so no screen is one long scroll.
+Four tabs: Today, Plan, Stats and Race. Settings opens from the cog at the top right of Today. Each tab is a fixed
+window rather than a long page: buttons at the top choose what to look at, and one card shows at a time. If a card
+is taller than the screen, just that card scrolls. The designs considered are in `docs/layout-designs.md`.
 
-- **Today**: days to the race, then every workout for the day at once, each with its warm-up, main set and
-  cool-down, whether it is done, what the watch recorded, and a row to move it. On a rest day it points to the next
-  workout. Below that, a week strip and this week's swim, bike and run against the plan.
+- **Today**: days to the race, then two buttons. Today lists every workout for the day, one line each; the first one
+  still to do is open, with its warm-up, main set and cool-down, what the watch recorded and a row to move it, and
+  tapping another opens that one instead. On a rest day it points to the next workout. This week has the week strip
+  and this week's swim, bike and run against the plan. Refresh reads Health Connect again.
 - **Plan**: a month calendar. Each day has a dot per workout in its sport's colour, solid once done. Each week
   shows its planned hours, and finished weeks fade. Tap a day to see its workouts underneath, or open it to move a
   workout or see what the watch recorded.
@@ -65,7 +67,7 @@ have a switch at the top that splits them into short pages, so no screen is one 
   never altered. The watch ticks a moved workout off on its new day. Strength training, weightlifting,
   calisthenics and HIIT count as gym, from the watch or a gym app such as Hevy; they tick off a gym session, count
   in training load and show in the totals.
-- **Stats** (three pages): Progress has this month so far against the same days of last month, weekly volume
+- **Stats** (three pages, with a button for each card on them): Progress has this month so far against the same days of last month, weekly volume
   (planned against done, one chart with Swim / Bike / Run buttons), time in each heart rate zone by week (and the
   share that was easy; 80/20 plans aim for 80%), fitness and form from heart rate, efficiency for runs and rides, heart
   rate drift on long sessions and calories by sport. Records has best efforts, totals and pool against open water. Health has last
