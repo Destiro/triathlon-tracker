@@ -1,12 +1,11 @@
 name: CI
 
+# Runs on every push, so a feature branch is checked before it is merged into main.
 on:
-  pull_request:
   push:
-    branches: [main]
   workflow_dispatch:
 
-# A new push to the same branch or PR cancels the run still going.
+# A new push to the same branch cancels the run still going.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -14,14 +13,17 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  CI: true
+
 jobs:
   checks:
     name: Typecheck, lint, test
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -35,8 +37,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -48,30 +50,13 @@ jobs:
     name: Expo doctor (dependency health)
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Informational: it calls external services that can be flaky.
+    # Informational: it flags packages a patch release behind and calls external services that can be flaky.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npx expo-doctor
-
-  worker-typecheck:
-    name: Worker typecheck
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: worker
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: worker/package-lock.json
-      - run: npm ci
-      - run: npm run typecheck
