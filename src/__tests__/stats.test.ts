@@ -44,7 +44,8 @@ describe('weekVolume and weekCompliance', () => {
     const v = weekVolume(schedule, map, 2);
     expect(v.bike.actual).toBe(50);
     expect(v.swim.actual).toBe(1300);
-    expect(v.swim.planned).toBe(1300 + 1300 + 1600);
+    // 1,300 + 1,300 + 1,600 yd of swimming, in metres.
+    expect(v.swim.planned).toBe(1189 + 1189 + 1463);
     expect(v.run.actual).toBe(0);
   });
 
@@ -105,8 +106,8 @@ describe('upNext', () => {
 
 describe('weekMinutes', () => {
   it('adds up a week of rides, runs and swims, turning swim metres into time', () => {
-    // Week 3: bike 50 + 60 + 75, run 35 + 40 + 45, swims 1,400 + 1,400 + 1,700 m = 4,500 m at 2.5 min per 100 m.
-    expect(weekMinutes(schedule, 3)).toBeCloseTo(185 + 120 + 112.5);
+    // Week 3: bike 50 + 60 + 75, run 35 + 40 + 45, swims 1,400 + 1,400 + 1,700 yd = 4,114 m at 2.5 min per 100 m.
+    expect(weekMinutes(schedule, 3)).toBeCloseTo(185 + 120 + 102.85);
   });
 
   it('counts a gym session you added', () => {

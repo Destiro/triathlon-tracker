@@ -42,7 +42,8 @@ describe('matchDay', () => {
       activity({ id: 1, sport: 'swim', date: WEDNESDAY, distanceM: 700, movingS: 1200 }),
       activity({ id: 2, sport: 'swim', date: WEDNESDAY, distanceM: 600, movingS: 1100 }),
     ];
-    expect(matchDay(schedule.get(WEDNESDAY), acts, '2026-10-30').results[0].fraction).toBeCloseTo(1);
+    // 1,300 m swum against 1,300 yd (1,189 m) planned: a little more than the plan asked for.
+    expect(matchDay(schedule.get(WEDNESDAY), acts, '2026-10-30').results[0].fraction).toBeCloseTo(1300 / 1189);
   });
 
   it('lets a brick take both the ride and the run', () => {
