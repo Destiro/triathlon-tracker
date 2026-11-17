@@ -31,7 +31,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       # The github-actions reporter lists failing tests as annotations on the run.
-      - run: npm test -- --ci --runInBand --verbose --reporters=default --reporters=github-actions '(notes|issues)[.](clear[.])?screens'
+      - run: npm test -- '(notes|issues)[.](clear[.])?screens' --ci --runInBand --verbose --reporters=default --reporters=github-actions
 
   bundle-android:
     name: Android bundle builds
