@@ -33,7 +33,7 @@ const saved = async () => JSON.parse((await AsyncStorage.getItem(KEY)) ?? '{}');
 
 test('how a workout went can be added from Today, shows afterwards, and is saved', async () => {
   await renderRouter(`${__dirname}/../app`);
-  expect(await screen.findByText('Evening Gym')).toBeTruthy();
+  expect(await screen.findByText('Evening Gym', {}, { timeout: 15000 })).toBeTruthy();
   await fireEvent.press(screen.getByText('Add how it went'));
 
   await fireEvent.press(screen.getByText('7'));

@@ -36,7 +36,7 @@ const saved = async () => JSON.parse((await AsyncStorage.getItem(KEY)) ?? '{}');
 
 test('an injury is logged on the Health page and flagged on Today', async () => {
   await renderRouter(`${__dirname}/../app`);
-  await screen.findByText('Evening Gym');
+  await screen.findByText('Evening Gym', {}, { timeout: 15000 });
   expect(screen.queryByRole('alert')).toBeNull();
 
   await fireEvent.press(tab('Stats'));

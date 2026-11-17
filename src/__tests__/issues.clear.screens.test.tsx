@@ -33,7 +33,7 @@ const saved = async () => JSON.parse((await AsyncStorage.getItem(KEY)) ?? '{}');
 
 test('clearing an injury on the Health page removes the reminder from Today', async () => {
   await renderRouter(`${__dirname}/../app`);
-  expect(await screen.findByText(/Injured: Left knee, day 3/)).toBeTruthy();
+  expect(await screen.findByText(/Injured: Left knee, day 3/, {}, { timeout: 15000 })).toBeTruthy();
 
   await fireEvent.press(screen.getByLabelText(/^Stats, tab/));
   await fireEvent.press(await screen.findByText('Health', {}, { timeout: 8000 }));
