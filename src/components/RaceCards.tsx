@@ -13,7 +13,13 @@ const shortDate = (key: string) => fromKey(key).toLocaleDateString(undefined, { 
 
 /** Where form is heading by race day, if the rest of the plan is followed. */
 export function FormCard({ projection }: { projection: FormProjection | null }) {
-  if (!projection) return null;
+  if (!projection) {
+    return (
+      <Card title="Form on race day" note="If you follow the rest of the plan.">
+        <Text style={type.body}>Not available yet. It starts from the workouts your watch has recorded, so once some have been read from Health Connect, and while the race is still to come, it shows here.</Text>
+      </Card>
+    );
+  }
   const recent = projection.points.slice(-70);
   const labels = recent.map((p) => shortDate(p.date));
   const firstProjected = recent.findIndex((p) => p.projected);
