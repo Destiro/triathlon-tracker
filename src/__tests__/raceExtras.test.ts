@@ -3,7 +3,6 @@ import { pacingPlan } from '../pacing';
 import { predictRace } from '../prediction';
 import { buildSchedule } from '../plan/schedule';
 import { plannedLoad, projectForm } from '../projection';
-import { longestSoFar, shareOf } from '../readiness';
 import { plannedMinutes } from '../stats';
 import { activity } from './helpers';
 
@@ -35,35 +34,6 @@ describe('pacingPlan', () => {
 
   it('has no plan until every leg has something to go on', () => {
     expect(pacingPlan(predictRace([], '2026-11-14', RACE), 190)).toBeNull();
-  });
-});
-
-describe('longestSoFar', () => {
-  const list = [
-    activity({ id: 1, sport: 'swim', date: '2026-11-01', distanceM: 1200 }),
-    activity({ id: 2, sport: 'swim', date: '2026-11-08', distanceM: 1600 }),
-    activity({ id: 3, sport: 'bike', date: '2026-11-08', start: '2026-11-08T07:00:00', distanceM: 50000 }),
-    activity({ id: 4, sport: 'run', date: '2026-11-08', start: '2026-11-08T09:00:00', distanceM: 8000 }),
-    activity({ id: 5, sport: 'bike', date: '2026-11-10', start: '2026-11-10T07:00:00', distanceM: 62000 }),
-    activity({ id: 6, sport: 'run', date: '2026-11-12', start: '2026-11-12T07:00:00', distanceM: 16000 }),
-    activity({ id: 7, sport: 'run', date: '2026-11-20', distanceM: 21000 }),
-  ];
-
-  it('finds the longest of each sport up to today', () => {
-    const l = longestSoFar(list, '2026-11-14', RACE);
-    expect([l.swim, l.bike, l.run]).toEqual([1600, 62000, 16000]);
-  });
-
-  it('finds the brick as a ride then a run on the same day, not a run before the ride', () => {
-    expect(longestSoFar(list, '2026-11-14', RACE).brick).toEqual({ bikeM: 50000, runM: 8000, date: '2026-11-08' });
-    const reversed = [activity({ id: 1, sport: 'run', date: '2026-11-08', start: '2026-11-08T06:00:00', distanceM: 8000 }), activity({ id: 2, sport: 'bike', date: '2026-11-08', start: '2026-11-08T08:00:00', distanceM: 50000 })];
-    expect(longestSoFar(reversed, '2026-11-14', RACE).brick).toBeNull();
-  });
-
-  it('shares a distance as a fraction that stops at 1', () => {
-    expect(shareOf(45000, 90000)).toBe(0.5);
-    expect(shareOf(95000, 90000)).toBe(1);
-    expect(shareOf(5, 0)).toBe(0);
   });
 });
 

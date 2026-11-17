@@ -14,8 +14,6 @@ const tab = (title: string, icon: string) => ({
 export default function TabLayout() {
   return (
     <Tabs
-      // Settings is not a tab, so the back button has to return to wherever you opened it from.
-      backBehavior="history"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.accent,
@@ -29,8 +27,6 @@ export default function TabLayout() {
       <Tabs.Screen name="plan" options={tab('Plan', 'calendar-check-outline')} />
       <Tabs.Screen name="stats" options={tab('Stats', 'chart-line')} />
       <Tabs.Screen name="race" options={tab('Race', 'flag-checkered')} />
-      {/* No tab: opened from the cog on Today. */}
-      <Tabs.Screen name="settings" options={{ href: null }} />
     </Tabs>
   );
 }

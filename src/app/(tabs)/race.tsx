@@ -2,15 +2,14 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colorOf, SPORT_LABELS, tintOf } from '../../components/sport';
-import { ChecklistCard, FormCard, ReadinessCard } from '../../components/RaceCards';
-import { FixedBody, OneCard } from '../../components/layout';
+import { ChecklistCard, FormCard } from '../../components/RaceCards';
+import { FixedBody } from '../../components/layout';
 import { Card, Segments } from '../../components/ui';
 import { daysBetween, fromKey } from '../../dates';
 import { formatClock, formatHoursMinutes, formatRunPace, formatSpeed, formatSwimPace } from '../../format';
 import { pacingPlan } from '../../pacing';
 import { Confidence, LegPrediction, predictRace } from '../../prediction';
 import { projectForm } from '../../projection';
-import { longestSoFar } from '../../readiness';
 import { highestHeartRate } from '../../stats';
 import { daysOfWeek, PHASE_LABELS, TOTAL_WEEKS } from '../../plan/schedule';
 import { Phase, Sport } from '../../plan/types';
@@ -69,7 +68,6 @@ export default function RaceScreen() {
   const prediction = predictRace(activities, todayKey, raceDistances);
   const maxHr = Math.max(settings.maxHr, highestHeartRate(activities));
   const pacing = pacingPlan(prediction, maxHr);
-  const longest = longestSoFar(activities, todayKey, raceDistances);
   const projection = projectForm(activities, schedule, activities.length ? activities[activities.length - 1].date : todayKey, todayKey, settings.raceDate, { maxHr, restHr: settings.restHr });
 
   const weeks = Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1).map((w) => ({ week: w, phase: daysOfWeek(schedule, w)[0]?.phase ?? 'base' }));
@@ -140,10 +138,7 @@ export default function RaceScreen() {
         )}
 
         {page === 'ready' && (
-          <OneCard
-            key="ready"
-            cards={[
-              { key: 'road', label: 'The road', node: (
+          <>
             <Card title="The road there" note="Each block is a week. Faded ones are still to come.">
               <View style={styles.weeks}>
                 {weeks.map(({ week, phase }) => (
@@ -166,11 +161,9 @@ export default function RaceScreen() {
                   </View>
                 ))}
               </View>
-            </Card> ) },
-              { key: 'distance', label: 'Distance', node: <ReadinessCard longest={longest} race={raceDistances} /> },
-              { key: 'form', label: 'Form', node: <FormCard projection={projection} /> },
-            ]}
-          />
+            </Card>
+            <FormCard projection={projection} />
+          </>
         )}
 
         {page === 'checklist' && <ChecklistCard state={checklist} onToggle={toggleChecklist} onAdd={addChecklist} onRemove={removeChecklist} />}

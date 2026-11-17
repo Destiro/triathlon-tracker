@@ -3,14 +3,14 @@ import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Button, Card } from '../../components/ui';
-import { PlaceField } from '../../components/WeatherCards';
-import { fromKey, isDateKey } from '../../dates';
-import { openSettings as openHealthConnect } from '../../health/connect';
-import { formatAgo } from '../../format';
-import { healthCoverage } from '../../statsExtra';
-import { Settings, useStore } from '../../store';
-import { colors, radius, spacing, type } from '../../theme';
+import { Button, Card } from '../components/ui';
+import { PlaceField } from '../components/WeatherCards';
+import { fromKey, isDateKey } from '../dates';
+import { openSettings as openHealthConnect } from '../health/connect';
+import { formatAgo } from '../format';
+import { healthCoverage } from '../statsExtra';
+import { Settings, useStore } from '../store';
+import { colors, radius, spacing, type } from '../theme';
 
 function Field({ label, value, onCommit, hint, keyboard }: { label: string; value: string; onCommit: (v: string) => string | null; hint?: string; keyboard?: 'numeric' | 'default' }) {
   const [text, setText] = useState(value);
