@@ -1,9 +1,10 @@
 /**
- * The real app, with a workout already saved, on Tuesday 17 November 2026: log an injury and see it flagged on Today.
+ * The real app, with a workout already saved: log an injury and see it flagged on Today.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { renderRouter } from 'expo-router/testing-library';
+import { addDays, startOfWeek, toKey } from '../dates';
 import { activity } from './helpers';
 
 declare const __dirname: string;
@@ -15,20 +16,17 @@ jest.mock('react-native-health-connect', () => ({ openHealthConnectSettings: jes
 
 const KEY = 'triathlon-tracker/v1';
 
+// Whatever day the tests run on: a plan that began this Monday, with the race a little under twenty weeks off.
+const TODAY = toKey(new Date());
+const PLAN_START = toKey(startOfWeek(new Date()));
+const RACE = toKey(addDays(startOfWeek(new Date()), 137));
+const settings = { planStart: PLAN_START, raceDate: RACE };
+
 beforeEach(async () => {
-  // Only the date is faked: timers stay real so the app and the test can wait normally.
-  jest.useFakeTimers({
-    now: new Date(2026, 10, 17, 9, 0),
-    doNotFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'setImmediate', 'clearImmediate', 'nextTick', 'queueMicrotask', 'requestAnimationFrame', 'cancelAnimationFrame', 'performance'],
-  });
   await AsyncStorage.clear();
   // A gym session the plan knows nothing about, so it shows under "Not in the plan" whatever the plan says for the day.
-  const gym = activity({ id: 777, sport: 'gym', date: '2026-11-17', name: 'Evening Gym', movingS: 2700 });
-  await AsyncStorage.setItem(KEY, JSON.stringify({ activities: [gym] }));
-});
-
-afterEach(() => {
-  jest.useRealTimers();
+  const gym = activity({ id: 777, sport: 'gym', date: TODAY, name: 'Evening Gym', movingS: 2700 });
+  await AsyncStorage.setItem(KEY, JSON.stringify({ settings, activities: [gym] }));
 });
 
 // The tab buttons are labelled like "Stats, tab, 3 of 4", unlike the page titles that share their names.
@@ -52,7 +50,7 @@ test('an injury is logged on the Health page and flagged on Today', async () => 
   await fireEvent.press(screen.getByText('Save'));
 
   expect(await screen.findByText('Left knee')).toBeTruthy();
-  expect(screen.getByText(/Injury · Moderate · 17 Nov · ongoing · 1 day/)).toBeTruthy();
+  expect(screen.getByText(/Injury · Moderate · .* · ongoing · 1 day/)).toBeTruthy();
   await waitFor(async () => expect((await saved()).issues).toHaveLength(1));
 
   // Today carries a reminder while it is on.
