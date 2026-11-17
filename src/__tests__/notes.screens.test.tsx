@@ -1,51 +1,141 @@
 /**
- * The real app, with a workout already saved: add how it went, and check it shows and was saved.
+ * How a workout went, and injury and illness: drawn against a fake store, so what the screens ask the store to do can
+ * be checked. Tuesday 17 November 2026.
  */
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fireEvent, screen, waitFor } from '@testing-library/react-native';
-import { renderRouter } from 'expo-router/testing-library';
-import { addDays, startOfWeek, toKey } from '../dates';
+import { fireEvent, render, screen } from '@testing-library/react-native';
+import React from 'react';
+import { Alert } from 'react-native';
 import { activity } from './helpers';
+import { IssueBanner, IssuesCard, NoteRow } from '../components/NoteSheets';
 
-declare const __dirname: string;
-
-jest.mock('@react-native-async-storage/async-storage', () => jest.requireActual('@react-native-async-storage/async-storage/jest/async-storage-mock'));
-jest.mock('react-native-safe-area-context', () => jest.requireActual('react-native-safe-area-context/jest/mock').default);
 jest.mock('@expo/vector-icons', () => ({ MaterialCommunityIcons: () => null }));
-jest.mock('react-native-health-connect', () => ({ openHealthConnectSettings: jest.fn(), SdkAvailabilityStatus: {} }));
 
-const KEY = 'triathlon-tracker/v1';
+let mockNotes: Record<string, object> = {};
+let mockIssues: object[] = [];
 
-// Whatever day the tests run on: a plan that began this Monday, with the race a little under twenty weeks off.
-const TODAY = toKey(new Date());
-const PLAN_START = toKey(startOfWeek(new Date()));
-const RACE = toKey(addDays(startOfWeek(new Date()), 137));
-const settings = { planStart: PLAN_START, raceDate: RACE };
-
-beforeEach(async () => {
-  await AsyncStorage.clear();
-  // A gym session the plan knows nothing about, so it shows under "Not in the plan" whatever the plan says for the day.
-  const gym = activity({ id: 777, sport: 'gym', date: TODAY, name: 'Evening Gym', movingS: 2700 });
-  await AsyncStorage.setItem(KEY, JSON.stringify({ settings, activities: [gym] }));
+jest.mock('../store', () => {
+  const store = {
+    saveNote: jest.fn(),
+    logIssue: jest.fn(),
+    clearIssue: jest.fn(),
+    deleteIssue: jest.fn(),
+  };
+  return {
+    useTodayKey: () => '2026-11-17',
+    useStore: () => ({ ...store, notes: mockNotes, issues: mockIssues }),
+  };
 });
 
-const saved = async () => JSON.parse((await AsyncStorage.getItem(KEY)) ?? '{}');
+const store = () => (jest.requireMock('../store') as { useStore: () => Record<string, jest.Mock> }).useStore();
 
-test('how a workout went can be added from Today, shows afterwards, and is saved', async () => {
-  await renderRouter(`${__dirname}/../app`);
-  expect(await screen.findByText('Evening Gym', {}, { timeout: 15000 })).toBeTruthy();
-  await fireEvent.press(screen.getByText('Add how it went'));
+const gym = activity({ id: 777, sport: 'gym', date: '2026-11-17', name: 'Evening Gym', movingS: 2700 });
+const knee = { id: 'k1', kind: 'injury', title: 'Left knee', start: '2026-11-15', severity: 2, notes: 'sore on stairs' };
 
-  await fireEvent.press(screen.getByText('7'));
-  expect(screen.getByText('7/10 · Hard')).toBeTruthy();
-  await fireEvent.press(screen.getByText('Good'));
-  await fireEvent.changeText(screen.getByLabelText('Carbs (g)'), '60');
-  await fireEvent.changeText(screen.getByLabelText('Notes'), 'Legs heavy early');
-  await fireEvent.press(screen.getByText('Save'));
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockNotes = {};
+  mockIssues = [];
+});
 
-  expect(await screen.findByText('Effort 7/10 · Hard · Felt good · 60 g carbs')).toBeTruthy();
-  expect(screen.getByText('Session load 315 (effort x minutes)')).toBeTruthy();
-  expect(screen.getByText('Legs heavy early')).toBeTruthy();
-  expect(screen.getByText('Edit how it went')).toBeTruthy();
-  await waitFor(async () => expect((await saved()).notes).toEqual({ '777': { rpe: 7, feel: 4, text: 'Legs heavy early', nutrition: { carbsG: 60 } } }));
+describe('how it went', () => {
+  it('is added from a workout with effort, how you felt, fuelling and a few words', async () => {
+    await render(<NoteRow activity={gym} />);
+    await fireEvent.press(screen.getByText('Add how it went'));
+
+    await fireEvent.press(screen.getByText('7'));
+    expect(screen.getByText('7/10 · Hard')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Good'));
+    await fireEvent.changeText(screen.getByLabelText('Carbs (g)'), '60');
+    await fireEvent.changeText(screen.getByLabelText('Fluid (ml)'), '750');
+    await fireEvent.changeText(screen.getByLabelText('What you had'), '2 gels');
+    await fireEvent.changeText(screen.getByLabelText('Notes'), 'Legs heavy early');
+    await fireEvent.press(screen.getByText('Save'));
+
+    expect(store().saveNote).toHaveBeenCalledWith(777, {
+      rpe: 7,
+      feel: 4,
+      text: 'Legs heavy early',
+      nutrition: { carbsG: 60, fluidMl: 750, sodiumMg: undefined, caffeineMg: undefined, what: '2 gels' },
+    });
+    // The sheet closes once it is saved.
+    expect(screen.queryByText('How it went')).toBeNull();
+  });
+
+  it('shows what was saved, with the session load, and can be changed', async () => {
+    mockNotes = { '777': { rpe: 7, feel: 4, text: 'Legs heavy early', nutrition: { carbsG: 60 } } };
+    await render(<NoteRow activity={gym} />);
+    expect(screen.getByText('Effort 7/10 · Hard · Felt good · 60 g carbs')).toBeTruthy();
+    // 7 x 45 minutes.
+    expect(screen.getByText('Session load 315 (effort x minutes)')).toBeTruthy();
+    expect(screen.getByText('Legs heavy early')).toBeTruthy();
+
+    await fireEvent.press(screen.getByText('Edit how it went'));
+    // The saved values are already filled in, and tapping the chosen effort again clears it.
+    expect(screen.getByDisplayValue('60')).toBeTruthy();
+    await fireEvent.press(screen.getByText('7'));
+    await fireEvent.press(screen.getByText('Save'));
+    expect(store().saveNote).toHaveBeenCalledWith(777, expect.objectContaining({ rpe: undefined, feel: 4, text: 'Legs heavy early' }));
+  });
+});
+
+describe('injury and illness', () => {
+  it('starts empty, and logs an injury with how bad it is and when it started', async () => {
+    await render(<IssuesCard />);
+    expect(screen.getByText('Nothing logged. That is the way to keep it.')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Log an injury or illness'));
+
+    // Nothing can be saved until it has a name.
+    await fireEvent.changeText(screen.getByLabelText('What is it'), 'Left knee');
+    await fireEvent.press(screen.getByText('Moderate'));
+    await fireEvent.press(screen.getByText('Save'));
+
+    expect(store().logIssue).toHaveBeenCalledWith({ kind: 'injury', title: 'Left knee', start: '2026-11-17', severity: 2, notes: '' });
+    // The sheet closes once it is saved, leaving the card's own button.
+    expect(screen.queryByText('What is it')).toBeNull();
+  });
+
+  it('will not log a blank name or a start day in the future', async () => {
+    await render(<IssuesCard />);
+    await fireEvent.press(screen.getByText('Log an injury or illness'));
+    expect(screen.getByText('Say what it is, such as Left knee.')).toBeTruthy();
+    await fireEvent.changeText(screen.getByLabelText('What is it'), 'Head cold');
+    await fireEvent.changeText(screen.getByLabelText('Started (YYYY-MM-DD)'), '2026-11-20');
+    expect(screen.getByText('It cannot start in the future.')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Save'));
+    expect(store().logIssue).not.toHaveBeenCalled();
+  });
+
+  it('lists what is on and what has cleared, and each can be cleared, reopened or deleted', async () => {
+    mockIssues = [knee, { id: 'f1', kind: 'illness', title: 'Flu', start: '2026-11-01', end: '2026-11-05' }];
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    await render(<IssuesCard />);
+    expect(screen.getByText(/Injury · Moderate · .* · ongoing · 3 days/)).toBeTruthy();
+    expect(screen.getByText('sore on stairs')).toBeTruthy();
+    expect(screen.getByText('Cleared')).toBeTruthy();
+    expect(screen.getByText(/Illness · .* to .* · 5 days/)).toBeTruthy();
+
+    await fireEvent.press(screen.getByText('Mark cleared today'));
+    expect(store().clearIssue).toHaveBeenCalledWith('k1', '2026-11-17');
+    await fireEvent.press(screen.getByText('Reopen'));
+    expect(store().clearIssue).toHaveBeenCalledWith('f1', undefined);
+
+    await fireEvent.press(screen.getAllByText('Delete')[0]);
+    const buttons = alert.mock.calls[0][2] ?? [];
+    await buttons.find((b) => b.text === 'Delete')?.onPress?.();
+    expect(store().deleteIssue).toHaveBeenCalledWith('k1');
+  });
+});
+
+describe('the reminder on Today', () => {
+  it('shows while an injury or illness is on, with the day it is on', async () => {
+    mockIssues = [knee];
+    await render(<IssueBanner />);
+    expect(screen.getByText(/Injured: Left knee, day 3/)).toBeTruthy();
+  });
+
+  it('is gone once everything has cleared', async () => {
+    mockIssues = [{ ...knee, end: '2026-11-16' }];
+    await render(<IssueBanner />);
+    expect(screen.queryByText(/Injured/)).toBeNull();
+  });
 });

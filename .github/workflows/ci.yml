@@ -30,9 +30,8 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
-      # The tests that draw the whole app are heavy and leave timers running, so use two workers and force Jest to exit
-      # rather than wait on them. The github-actions reporter lists any failing test as an annotation on the run.
-      - run: npm test -- --ci --maxWorkers=2 --forceExit --reporters=default --reporters=github-actions
+      # The github-actions reporter lists any failing test as an annotation on the run.
+      - run: npm test -- --ci --reporters=default --reporters=github-actions
 
   bundle-android:
     name: Android bundle builds
