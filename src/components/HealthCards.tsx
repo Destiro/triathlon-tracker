@@ -3,7 +3,6 @@ import { StyleSheet, Text, View } from 'react-native';
 import { addDays, fromKey, toKey } from '../dates';
 import { formatMinutes } from '../format';
 import { baseline, HealthByDate, healthSeries, latest, Night } from '../health/summary';
-import { morningReadiness } from '../health/readiness';
 import { colors, healthColors, radius, spacing, type } from '../theme';
 import { BarChart, LineChart } from './charts';
 import { Card } from './ui';
@@ -46,48 +45,32 @@ function StageBar({ night }: { night: Night }) {
   );
 }
 
-const TONE_COLORS = { good: colors.success, ok: colors.warning, low: colors.danger };
-
-/** Last night's sleep and the readiness score from it, as one card for the top of Today. */
-export function ThisMorning({ health, date }: { health: HealthByDate; date: string }) {
+/** Last night's sleep: how long, in which stages, and the overnight heart rate and HRV. The readiness score has its own card. */
+export function LastNight({ health, date }: { health: HealthByDate; date: string }) {
   const day = health[date];
   const night = day?.sleep;
-  const readiness = morningReadiness(health, date);
-  if (!night && !readiness) return null;
+  if (!night) return null;
   const usual = baseline(health, 'asleepMin', date);
   return (
     <Card>
       <View style={styles.between}>
-        <Text style={type.heading}>This morning</Text>
-        {night && (
-          <Text style={type.small}>
-            {clockTime(night.start)} to {clockTime(night.end)}
-          </Text>
-        )}
+        <Text style={type.heading}>Last night</Text>
+        <Text style={type.small}>
+          {clockTime(night.start)} to {clockTime(night.end)}
+        </Text>
       </View>
-      {readiness && (
-        <View style={styles.between} accessibilityLabel={`Readiness ${readiness.score}, ${readiness.label}`}>
-          <Text style={[type.number, { fontSize: 32, color: TONE_COLORS[readiness.tone] }]}>{readiness.score}</Text>
-          <Text style={[type.heading, { color: TONE_COLORS[readiness.tone] }]}>{readiness.label}</Text>
-        </View>
-      )}
-      {night && (
-        <>
-          <View style={styles.between}>
-            <Text style={type.body}>
-              Slept <Text style={styles.statValue}>{formatMinutes(night.asleepMin)}</Text>
-            </Text>
-            {usual !== null && <Text style={type.small}>Usually {formatMinutes(usual)}</Text>}
-          </View>
-          <StageBar night={night} />
-        </>
-      )}
+      <View style={styles.between}>
+        <Text style={type.body}>
+          Slept <Text style={styles.statValue}>{formatMinutes(night.asleepMin)}</Text>
+        </Text>
+        {usual !== null && <Text style={type.small}>Usually {formatMinutes(usual)}</Text>}
+      </View>
+      <StageBar night={night} />
       <View style={styles.stats}>
-        {night?.sleepingHr !== undefined && <Stat label="Sleeping HR" value={`${night.sleepingHr} bpm`} />}
+        {night.sleepingHr !== undefined && <Stat label="Sleeping HR" value={`${night.sleepingHr} bpm`} />}
         {day?.hrv !== undefined && <Stat label="HRV" value={`${day.hrv} ms`} />}
         {day?.restingHr !== undefined && <Stat label="Resting HR" value={`${day.restingHr} bpm`} />}
       </View>
-      {readiness && readiness.missing.length > 0 && <Text style={type.small}>Readiness leaves out {readiness.missing.join(', ')}: nothing to compare with yet.</Text>}
     </Card>
   );
 }

@@ -81,15 +81,16 @@ test('Today shows every workout for the day at once, with its detail', async () 
   for (const gone of ['UP NEXT', 'Up next', 'Later today', 'Done today']) expect(screen.queryByText(gone)).toBeNull();
 });
 
-test("Today shows last night's sleep from Health Connect in one This morning card", async () => {
+test('Today has no sleep card: that lives on the Health page of Stats', async () => {
   await render(<TodayScreen />);
-  expect(screen.getByText('This morning')).toBeTruthy();
-  expect(screen.queryByText('Last night')).toBeNull();
-  expect(screen.getByText('7 h 05')).toBeTruthy();
-  expect(screen.getByText('Deep 1 h 10')).toBeTruthy();
-  expect(screen.getByText('REM 1 h 35')).toBeTruthy();
-  expect(screen.getByText('52 bpm')).toBeTruthy();
-  expect(screen.getByText('58 ms')).toBeTruthy();
+  for (const gone of ['This morning', 'Last night', 'Readiness today']) expect(screen.queryByText(gone)).toBeNull();
+  expect(screen.queryByText('7 h 05')).toBeNull();
+});
+
+test('the cog on Today opens Settings, which is no longer a tab', async () => {
+  await render(<TodayScreen />);
+  await fireEvent.press(screen.getByLabelText('Settings'));
+  expect(router.push).toHaveBeenCalledWith('/settings');
 });
 
 test('tapping a workout on Today does not open another screen, and the run can be moved from its card', async () => {
@@ -112,11 +113,10 @@ test('on a rest day Today says so and points to the next workout', async () => {
   expect(router.push).toHaveBeenCalledWith({ pathname: '/day/[date]', params: { date: '2026-11-10' } });
 });
 
-test('Race shows the countdown and the course, and no race week list', async () => {
+test('Race shows the countdown, and no course card or race week list', async () => {
   await render(<RaceScreen />);
   expect(screen.getByText('119')).toBeTruthy();
-  expect(screen.getByText('90 km')).toBeTruthy();
-  expect(screen.getByText('21.1 km')).toBeTruthy();
+  expect(screen.queryByText('The course')).toBeNull();
   expect(screen.queryByText('Tap a day to see the workout.')).toBeNull();
 });
 
@@ -129,6 +129,9 @@ test('Race is split into Race day, Ready? and Checklist pages, one at a time', a
   await fireEvent.press(screen.getByText('Ready?'));
   expect(screen.getByText('Ready for the distance?')).toBeTruthy();
   expect(screen.getByText('The road there')).toBeTruthy();
+  // The road is the first card on the page, above readiness.
+  const page = JSON.stringify(screen.toJSON());
+  expect(page.indexOf('The road there')).toBeLessThan(page.indexOf('Ready for the distance?'));
   expect(screen.queryByText('Predicted finish and pacing')).toBeNull();
 
   await fireEvent.press(screen.getByText('Checklist'));
@@ -144,8 +147,4 @@ test('ticking a checklist item on Race passes its id to the store', async () => 
   expect(useStore().toggleChecklist).toHaveBeenCalledWith('bike.0');
 });
 
-test('Today shows the readiness score in This morning, from sleep alone when there is no usual to compare with yet', async () => {
-  await render(<TodayScreen />);
-  expect(screen.getByLabelText('Readiness 88, Good to go')).toBeTruthy();
-  expect(screen.getByText('Readiness leaves out heart rate, HRV: nothing to compare with yet.')).toBeTruthy();
-});
+

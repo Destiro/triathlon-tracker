@@ -4,7 +4,6 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
-import HealthScreen from '../app/(tabs)/health';
 import StatsScreen from '../app/(tabs)/stats';
 
 jest.mock('react-native-safe-area-context', () => jest.requireActual('react-native-safe-area-context/jest/mock').default);
@@ -52,9 +51,9 @@ beforeEach(() => {
   mockBare = false;
 });
 
-test('Training opens on Progress, with one volume chart that switches sport', async () => {
+test('Stats opens on Progress, with one volume chart that switches sport', async () => {
   await render(<StatsScreen />);
-  expect(screen.getByText('Training')).toBeTruthy();
+  expect(screen.getByText('Stats')).toBeTruthy();
   expect(screen.getByText('November so far')).toBeTruthy();
   expect(screen.getByText('Volume per week')).toBeTruthy();
   expect(screen.queryByText('Swim per week')).toBeNull();
@@ -62,13 +61,13 @@ test('Training opens on Progress, with one volume chart that switches sport', as
   expect(screen.getByText('Fitness and form')).toBeTruthy();
   expect(screen.getByText('Heart rate drift')).toBeTruthy();
   expect(screen.getByText('1,270 kcal')).toBeTruthy();
-  // Health lives on its own tab now.
+  // Health is its own page on this tab.
   for (const gone of ['Sleep', 'Body', 'Overnight', 'Readiness, last two weeks']) expect(screen.queryByText(gone)).toBeNull();
   await fireEvent.press(screen.getAllByText('Bike')[0]);
   expect(screen.getByText('Volume per week')).toBeTruthy();
 });
 
-test('Training keeps bests and totals on a Records page', async () => {
+test('Stats keeps bests and totals on a Records page', async () => {
   await render(<StatsScreen />);
   expect(screen.queryByText('Totals since the plan began')).toBeNull();
   await fireEvent.press(screen.getByText('Records'));
@@ -76,8 +75,16 @@ test('Training keeps bests and totals on a Records page', async () => {
   expect(screen.queryByText('Time in zones')).toBeNull();
 });
 
-test('the Health tab has readiness, body and overnight readings', async () => {
-  await render(<HealthScreen />);
+test('Stats has Training and Health pages: three in all, and no separate Health tab', async () => {
+  await render(<StatsScreen />);
+  for (const page of ['Progress', 'Records', 'Health']) expect(screen.getByText(page)).toBeTruthy();
+});
+
+test('the Health page has last night, readiness, body and overnight readings', async () => {
+  await render(<StatsScreen />);
+  await fireEvent.press(screen.getByText('Health'));
+  // Sleep moved here from Today.
+  expect(screen.getByText('Last night')).toBeTruthy();
   expect(screen.getByText('Readiness today')).toBeTruthy();
   expect(screen.getByText('Readiness, last two weeks')).toBeTruthy();
   expect(screen.getByText('Body')).toBeTruthy();
@@ -86,11 +93,11 @@ test('the Health tab has readiness, body and overnight readings', async () => {
   expect(screen.getByText('74.2 kg  −1.6')).toBeTruthy();
 });
 
-test('Training and Health leave out what has no data behind it', async () => {
+test('Stats leaves out what has no data behind it', async () => {
   mockBare = true;
   await render(<StatsScreen />);
   for (const gone of ['Time in zones', 'Heart rate drift', 'Energy burned']) expect(screen.queryByText(gone)).toBeNull();
-  await render(<HealthScreen />);
+  await fireEvent.press(screen.getByText('Health'));
   for (const gone of ['Body', 'Overnight', 'Readiness today']) expect(screen.queryByText(gone)).toBeNull();
   expect(screen.getByText(/Connect Health Connect in Settings/)).toBeTruthy();
 });

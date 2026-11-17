@@ -79,10 +79,8 @@ test('a swim shows whether it was a pool or open water, and tapping corrects it'
   expect(store().setOpenWater).toHaveBeenCalledWith(12, true);
 });
 
-test('Today celebrates a new best from the last two days, with the one it beat', async () => {
+test('Today no longer has a new best card; bests are on the Records page of Stats', async () => {
   await render(<TodayScreen />);
-  expect(screen.getByText('New best · Longest ride')).toBeTruthy();
-  expect(screen.getByText('32.0 km')).toBeTruthy();
-  expect(screen.getByText('Your last best was 30.0 km on 25 Oct.')).toBeTruthy();
-  expect(screen.getByText('New best · Fastest ride (20 km+)')).toBeTruthy();
+  expect(screen.queryByText('New best · Longest ride')).toBeNull();
+  expect(screen.queryByText(/New best/)).toBeNull();
 });
