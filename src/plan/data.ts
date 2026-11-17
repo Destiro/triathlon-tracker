@@ -2,9 +2,10 @@
  * Triathlete's "20-Week Training Plan for Your First 70.3" (Matt Fitzgerald), as written.
  * https://www.triathlete.com/training/20-week-training-plan-first-70-3-triathlon/
  *
- * Swims are written in yards in the plan. They are kept as the same numbers in metres, which is how they are
- * swum in a 25 m pool (about 9% further).
+ * Swims are written in yards in the plan and kept in yards here, so the app shows what the page says. The metres
+ * they work out to are used to compare with what the watch records.
  */
+import { yardsToMetres } from '../format';
 import { Leg, PlannedWorkout, PlanWeek, WorkoutKind } from './types';
 
 const MOD = 'moderate aerobic intensity';
@@ -17,7 +18,7 @@ const swimCool = (m: number) => `CD: ${m} @ ${LOW}`;
 const DRILLS = '8 × 25 drills, RI 0:10';
 const KICK = '8 × 25 kick, RI 0:15';
 
-const swim = (title: string, metres: number, ...steps: string[]): PlannedWorkout => ({ kind: 'swim', title, metres, steps });
+const swim = (title: string, yards: number, ...steps: string[]): PlannedWorkout => ({ kind: 'swim', title, yards, metres: yardsToMetres(yards), steps });
 
 /** The long steady Sunday swim: warm-up, one continuous main set, cool-down. */
 const steadySwim = (ends: number, main: number) =>

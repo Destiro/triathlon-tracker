@@ -2,7 +2,7 @@ import { PlannedWorkout } from './types';
 
 export interface StepBlock {
   label: 'WU' | 'Main' | 'CD';
-  /** Minutes for rides and runs, metres for swims. */
+  /** Minutes for rides and runs, yards for swims (as the plan writes them). */
   amount: number;
 }
 
@@ -16,7 +16,7 @@ const END = /^(WU|CD): (\d+)( min)? @/;
  * don't start and end with a plain warm-up and cool-down, as in bricks, races and some swims.
  */
 export function stepBlocks(w: PlannedWorkout): StepBlock[] | null {
-  const total = w.kind === 'swim' ? w.metres : w.kind === 'bike' || w.kind === 'run' ? w.minutes : undefined;
+  const total = w.kind === 'swim' ? w.yards : w.kind === 'bike' || w.kind === 'run' ? w.minutes : undefined;
   if (!total || w.steps.length < 3) return null;
   const parse = (line: string, want: 'WU' | 'CD') => {
     const m = END.exec(line);

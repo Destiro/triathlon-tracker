@@ -8,11 +8,11 @@ const minutes = (week: number, sport: Sport) =>
     .filter((l) => l.sport === sport)
     .reduce((sum, l) => sum + (l.minutes ?? 0), 0);
 
-const swimMetres = (week: number) =>
+const swimYards = (week: number) =>
   PLAN[week - 1].days
     .flat()
     .filter((w) => w.kind === 'swim')
-    .reduce((sum, w) => sum + (w.metres ?? 0), 0);
+    .reduce((sum, w) => sum + (w.yards ?? 0), 0);
 
 describe('the 20 week plan', () => {
   it('has 20 numbered weeks of 7 days, with Monday off and race day last', () => {
@@ -44,14 +44,21 @@ describe('the 20 week plan', () => {
     expect(minutes(1, 'run')).toBe(60 + 45);
   });
 
-  it('matches the page week 17 swim total (yards written as the same number of metres)', () => {
-    expect(swimMetres(17)).toBe(6700);
+  it('matches the page week 17 swim total, in the yards the page uses', () => {
+    expect(swimYards(17)).toBe(6700);
+  });
+
+  it('works out the metres of every swim from its yards', () => {
+    const swims = PLAN.flatMap((week) => week.days.flat()).filter((w) => w.kind === 'swim');
+    expect(swims.length).toBeGreaterThan(0);
+    for (const w of swims) expect(w.metres).toBe(Math.round(w.yards! * 0.9144));
   });
 
   it('adds up a swim from its warm-up, main set and cool-down', () => {
     // Week 2 Sunday: WU 300, MS 1,000, CD 300.
     const sunday = PLAN[1].days[6].find((w) => w.kind === 'swim');
-    expect(sunday?.metres).toBe(1600);
+    expect(sunday?.yards).toBe(1600);
+    expect(sunday?.metres).toBe(1463);
   });
 
   it('gives every workout at least one step to read', () => {

@@ -28,6 +28,12 @@ export function formatDistance(metres: number, inMetres = false): string {
   return `${(metres / 1000).toFixed(metres >= 100000 ? 0 : 1)} km`;
 }
 
+/** The plan swims in yards; the watch records metres. */
+export const yardsToMetres = (yards: number): number => Math.round(yards * 0.9144);
+
+/** 1400 → "1,400 yd". */
+export const formatYards = (yards: number): string => `${Math.round(yards).toLocaleString()} yd`;
+
 /** Running pace per km from metres per second: "5:12 /km". */
 export const formatRunPace = (speed: number): string => (speed > 0 ? `${formatClock(1000 / speed)} /km` : '–');
 

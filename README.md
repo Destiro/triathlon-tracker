@@ -13,7 +13,7 @@ the app as they were; Strava is no longer used for anything.
 
 The plan is Triathlete's [20-week plan for your first 70.3](https://www.triathlete.com/training/20-week-training-plan-first-70-3-triathlon/)
 (Matt Fitzgerald), entered week by week in `src/plan/data.ts`. Swim distances are written in yards on the page
-and kept here as the same number in metres.
+and shown in yards here. They are converted to metres (0.9144 m per yard) only to compare with what the watch records.
 
 ## What it does
 

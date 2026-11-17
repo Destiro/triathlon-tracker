@@ -41,10 +41,10 @@ test('opens on this month with today selected and its workouts underneath', asyn
 
 test('shows each plan week with its planned hours', async () => {
   await render(<PlanScreen />);
-  // Week 5: 295 min riding, 129 running, 3,050 m of swimming (76 min), plus Tuesday's 45 min gym session.
+  // Week 5: 295 min riding, 129 running, 3,050 yd of swimming (70 min), plus Tuesday's 45 min gym session.
   expect(screen.getByText('W3')).toBeTruthy();
   expect(screen.getByText('W5')).toBeTruthy();
-  expect(screen.getByText('9.1h')).toBeTruthy();
+  expect(screen.getByText('9.0h')).toBeTruthy();
   expect(screen.getByText('W7')).toBeTruthy();
 });
 
