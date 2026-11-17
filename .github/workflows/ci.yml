@@ -30,7 +30,8 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
-      - run: npm test -- --ci
+      # The github-actions reporter lists any failing test as an annotation on the run.
+      - run: npm test -- --ci --reporters=default --reporters=github-actions
 
   bundle-android:
     name: Android bundle builds

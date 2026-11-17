@@ -40,7 +40,7 @@ jest.mock('../store', () => {
     bodyFat: { '2026-10-20': 16.7, '2026-11-12': 15.8 },
     overnight: { '2026-11-13': { spo2: 95, spo2Low: 91, breathing: 14.5 }, '2026-11-14': { spo2: 96, spo2Low: 93, breathing: 14.1 } },
   });
-  const store = { settings, schedule: buildSchedule(settings.planStart, settings.raceDate, settings.raceName), activities, activitiesByDate: byDate(activities), health };
+  const store = { settings, schedule: buildSchedule(settings.planStart, settings.raceDate, settings.raceName), activities, activitiesByDate: byDate(activities), health, notes: {}, issues: [] };
   return {
     useTodayKey: () => '2026-11-15',
     useStore: () => (mockBare ? { ...store, activities: [], activitiesByDate: new Map(), health: {} } : store),

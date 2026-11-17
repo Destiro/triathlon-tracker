@@ -14,6 +14,8 @@ const data = (over: Partial<BackupData> = {}): BackupData => ({
   edits: NO_EDITS,
   waterOverrides: { [swim.id]: true },
   health: { '2026-10-21': { date: '2026-10-21', hrv: 60 } },
+  notes: {},
+  issues: [],
   ...over,
 });
 
@@ -41,6 +43,13 @@ describe('backup files', () => {
     expect(readBackup(text).data.activities).toEqual([run]);
   });
 
+  it('carry notes and logged injuries, and an older backup without them reads as having none', () => {
+    const withNotes = data({ notes: { '16000000002': { rpe: 6, text: 'cold' } }, issues: [{ id: 'k', kind: 'injury', title: 'Left knee', start: '2026-11-10' }] });
+    expect(readBackup(makeBackup(withNotes, new Date('2026-11-16T08:00:00Z'))).data).toEqual(withNotes);
+    const old = JSON.stringify({ app: 'triathlon-tracker', version: 1, data: { settings, activities: [run] } });
+    expect(readBackup(old).data).toMatchObject({ notes: {}, issues: [] });
+  });
+
   it('describe what they hold', () => {
     expect(describeBackup(data())).toBe('2 workouts and 1 day of health');
   });
@@ -53,6 +62,17 @@ describe('restoring', () => {
     expect(restored.activities.map((a) => a.id)).toEqual([today.id, swim.id, run.id]);
     expect(restored.waterOverrides).toEqual({ [swim.id]: true });
     expect(Object.keys(restored.health).sort()).toEqual(['2026-10-21', '2026-11-16']);
+  });
+
+  it('adds back notes and injuries the phone is missing, keeping the phone copy of any it has', () => {
+    const phone = data({ notes: { '1': { rpe: 5 } }, issues: [{ id: 'a', kind: 'illness', title: 'Cold', start: '2026-11-12' }] });
+    const backup = data({
+      notes: { '1': { rpe: 9 }, '2': { rpe: 3 } },
+      issues: [{ id: 'a', kind: 'illness', title: 'Old cold', start: '2026-11-12' }, { id: 'b', kind: 'injury', title: 'Hip', start: '2026-10-01' }],
+    });
+    const restored = restoreInto(phone, backup);
+    expect(restored.notes).toEqual({ '1': { rpe: 5 }, '2': { rpe: 3 } });
+    expect(restored.issues.map((i) => [i.id, i.title])).toEqual([['a', 'Cold'], ['b', 'Hip']]);
   });
 
   it("keeps the phone's copy where both have one, and takes the backup's plan changes and settings", () => {

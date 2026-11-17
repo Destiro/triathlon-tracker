@@ -1,6 +1,7 @@
 import { Activity, mergeActivities } from './activities';
 import { toKey } from './dates';
 import { HealthByDate, mergeHealth } from './health/summary';
+import { HealthIssue, mergeIssues, mergeNotes, Notes, readIssues, readNotes } from './notes';
 import { NO_EDITS, PlanEdits } from './plan/edits';
 import type { Settings } from './settings';
 
@@ -17,6 +18,9 @@ export interface BackupData {
   /** Swims corrected to pool (false) or open water (true), by activity id. */
   waterOverrides: Record<string, boolean>;
   health: HealthByDate;
+  /** Your notes on workouts, by workout id. */
+  notes: Notes;
+  issues: HealthIssue[];
 }
 
 /** An error whose message is fine to show to the person using the app. */
@@ -53,6 +57,8 @@ export function readBackup(text: string): { data: BackupData; exportedAt: string
       edits: isObject(d.edits) ? { ...NO_EDITS, ...(d.edits as Partial<PlanEdits>) } : NO_EDITS,
       waterOverrides: isObject(d.waterOverrides) ? (d.waterOverrides as Record<string, boolean>) : {},
       health: isObject(d.health) ? (d.health as HealthByDate) : {},
+      notes: readNotes(d.notes),
+      issues: readIssues(d.issues),
     },
   };
 }
@@ -69,6 +75,8 @@ export function restoreInto(current: BackupData, backup: BackupData): BackupData
     edits: backup.edits,
     waterOverrides: { ...backup.waterOverrides, ...current.waterOverrides },
     health: mergeHealth(backup.health, current.health),
+    notes: mergeNotes(current.notes, backup.notes),
+    issues: mergeIssues(current.issues, backup.issues),
   };
 }
 

@@ -8,6 +8,7 @@ import { addDays, fromKey, toKey } from './dates';
 import * as healthConnect from './health/connect';
 import { HealthByDate, mergeHealth } from './health/summary';
 import { mergeWorkouts, needsReading, READ_VERSION } from './health/workouts';
+import { addIssue, HealthIssue, NewIssue, Notes, readIssues, readNotes, removeIssue, resolveIssue, SessionNote, setNote } from './notes';
 import { addSessions, applyEdits, NewSession, NO_EDITS, PlanEdits, removeSession, setMove } from './plan/edits';
 import { buildSchedule, Schedule } from './plan/schedule';
 import { DEFAULT_SETTINGS, loadSettings, Place, Settings } from './settings';
@@ -44,6 +45,9 @@ interface Saved {
   lastBackup?: number | null;
   checklist?: ChecklistState;
   weather?: WeatherData | null;
+  /** Your notes on workouts, by workout id. */
+  notes?: Notes;
+  issues?: HealthIssue[];
 }
 
 /** The forecast kept by day for each place, for whatever places are set now. */
@@ -104,6 +108,16 @@ interface Store {
   toggleChecklist: (id: string) => void;
   addChecklist: (text: string) => void;
   removeChecklist: (id: string) => void;
+  /** Your notes on recorded workouts (effort, how you felt, fuelling, a few words), by workout id. */
+  notes: Notes;
+  /** Saves a workout's note, or clears it when it has nothing in it. */
+  saveNote: (workoutId: number, note: SessionNote) => void;
+  /** Injuries and illnesses you have logged, newest first. */
+  issues: HealthIssue[];
+  logIssue: (input: NewIssue) => void;
+  /** Marks an issue cleared on a day, or open again when `end` is undefined. */
+  clearIssue: (id: string, end: string | undefined) => void;
+  deleteIssue: (id: string) => void;
 }
 
 const StoreContext = createContext<Store | null>(null);
@@ -131,6 +145,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const healthSyncingRef = useRef(false);
   const [lastBackup, setLastBackup] = useState<number | null>(null);
   const [checklist, setChecklist] = useState<ChecklistState>(NO_CHECKLIST);
+  const [notes, setNotes] = useState<Notes>({});
+  const [issues, setIssues] = useState<HealthIssue[]>([]);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [weatherUpdating, setWeatherUpdating] = useState(false);
   const [weatherError, setWeatherError] = useState<string | null>(null);
@@ -156,6 +172,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           setLastHealthSync(saved.lastHealthSync ?? null);
           setLastBackup(saved.lastBackup ?? null);
           setChecklist({ ...NO_CHECKLIST, ...saved.checklist });
+          setNotes(readNotes(saved.notes));
+          setIssues(readIssues(saved.issues));
           setWeatherData(saved.weather ?? null);
         }
       } catch {
@@ -180,10 +198,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       lastHealthSync,
       lastBackup,
       checklist,
+      notes,
+      issues,
       weather: weatherData,
     };
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(saved)).catch(() => {});
-  }, [ready, settings, stored, lastSync, workoutCursor, readVersion, edits, waterOverrides, health, healthConnected, lastHealthSync, lastBackup, checklist, weatherData]);
+  }, [ready, settings, stored, lastSync, workoutCursor, readVersion, edits, waterOverrides, health, healthConnected, lastHealthSync, lastBackup, checklist, notes, issues, weatherData]);
 
   // The workout read decides what to skip from what is saved at that moment, which the callback can't see as state.
   useEffect(() => {
@@ -356,7 +376,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const addChecklist = useCallback((text: string) => setChecklist((c) => addItem(c, text, Math.random().toString(36).slice(2, 10))), []);
   const removeChecklist = useCallback((id: string) => setChecklist((c) => removeItem(c, id)), []);
 
-  const backupData = (): BackupData => ({ settings, activities: stored, edits, waterOverrides, health });
+  const saveNote = useCallback((workoutId: number, note: SessionNote) => setNotes((n) => setNote(n, workoutId, note)), []);
+  const logIssue = useCallback((input: NewIssue) => setIssues((list) => addIssue(list, input, Math.random().toString(36).slice(2, 10))), []);
+  const clearIssue = useCallback((id: string, end: string | undefined) => setIssues((list) => resolveIssue(list, id, end)), []);
+  const deleteIssue = useCallback((id: string) => setIssues((list) => removeIssue(list, id)), []);
+
+  const backupData = (): BackupData => ({ settings, activities: stored, edits, waterOverrides, health, notes, issues });
 
   const exportBackup = async (): Promise<string> => {
     try {
@@ -380,6 +405,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setEdits(restored.edits);
       setWaterOverrides(restored.waterOverrides);
       setHealth(restored.health);
+      setNotes(restored.notes);
+      setIssues(restored.issues);
       const added = restored.activities.length - stored.length;
       return `Restored. ${added} workout${added === 1 ? '' : 's'} added back; nothing on the phone was removed.`;
     } catch (e) {
@@ -423,6 +450,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     toggleChecklist,
     addChecklist,
     removeChecklist,
+    notes,
+    saveNote,
+    issues,
+    logIssue,
+    clearIssue,
+    deleteIssue,
   };
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
