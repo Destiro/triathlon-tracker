@@ -5,7 +5,7 @@ import { colorOf, SPORT_LABELS, tintOf } from '../../components/sport';
 import { ChecklistCard, FormCard, ReadinessCard } from '../../components/RaceCards';
 import { Card, Segments } from '../../components/ui';
 import { daysBetween, fromKey } from '../../dates';
-import { formatClock, formatDistance, formatHoursMinutes, formatRunPace, formatSpeed, formatSwimPace } from '../../format';
+import { formatClock, formatHoursMinutes, formatRunPace, formatSpeed, formatSwimPace } from '../../format';
 import { pacingPlan } from '../../pacing';
 import { Confidence, LegPrediction, predictRace } from '../../prediction';
 import { projectForm } from '../../projection';
@@ -63,7 +63,6 @@ export default function RaceScreen() {
   const currentWeek = schedule.get(todayKey)?.week ?? (todayKey < settings.planStart ? 0 : TOTAL_WEEKS + 1);
   const race = schedule.get(settings.raceDate)?.workouts.find((w) => w.kind === 'race');
   const legs = race?.legs ?? [];
-  const totalM = legs.reduce((sum, l) => sum + (l.metres ?? 0), 0);
   const metres = (sport: Sport, fallback: number) => legs.find((l) => l.sport === sport)?.metres ?? fallback;
   const raceDistances = { swim: metres('swim', 1900), bike: metres('bike', 90000), run: metres('run', 21100) };
   const prediction = predictRace(activities, todayKey, raceDistances);
@@ -132,24 +131,11 @@ export default function RaceScreen() {
                 </Text>
               </Card>
             )}
-
-            {legs.length > 0 && (
-              <Card title="The course" note={`${formatDistance(totalM)} in all`}>
-                {legs.map((l) => (
-                  <View key={l.sport} style={[styles.leg, { borderLeftColor: colorOf(l.sport), backgroundColor: tintOf(l.sport) }]}>
-                    <Text style={type.body}>{SPORT_LABELS[l.sport]}</Text>
-                    <Text style={styles.legAmount}>{`${(l.metres ?? 0) / 1000} km`}</Text>
-                  </View>
-                ))}
-              </Card>
-            )}
           </>
         )}
 
         {page === 'ready' && (
           <>
-            <ReadinessCard longest={longest} race={raceDistances} />
-            <FormCard projection={projection} />
             <Card title="The road there" note="Each block is a week. Faded ones are still to come.">
               <View style={styles.weeks}>
                 {weeks.map(({ week, phase }) => (
@@ -173,6 +159,8 @@ export default function RaceScreen() {
                 ))}
               </View>
             </Card>
+            <ReadinessCard longest={longest} race={raceDistances} />
+            <FormCard projection={projection} />
           </>
         )}
 

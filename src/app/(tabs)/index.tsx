@@ -5,26 +5,23 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'r
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ring } from '../../components/charts';
 import { DayWorkouts } from '../../components/DayWorkouts';
-import { ThisMorning } from '../../components/HealthCards';
 import { colorOf, SPORT_LABELS, tintOf } from '../../components/sport';
 import { Button, Card, Empty } from '../../components/ui';
 import { WeekStrip } from '../../components/WeekStrip';
 import { plannedAmount } from '../../components/WorkoutCard';
-import { bestValue } from '../../bests';
 import { daysBetween, formatDay, fromKey } from '../../dates';
 import { formatAgo, formatMinutes } from '../../format';
 import { daysOfWeek, PHASE_LABELS, TOTAL_WEEKS } from '../../plan/schedule';
-import { newBests, SPORTS, unitOf, upNext, weekCompliance, weekGym, weekVolume } from '../../stats';
+import { SPORTS, unitOf, upNext, weekCompliance, weekGym, weekVolume } from '../../stats';
 import { useStore, useTodayKey } from '../../store';
 import { colors, radius, spacing, type } from '../../theme';
 
 export default function TodayScreen() {
-  const { settings, schedule, activities, activitiesByDate, healthConnected, syncing, sync, lastSync, syncError, connectHealth, health, healthSyncing } = useStore();
+  const { settings, schedule, activitiesByDate, healthConnected, syncing, sync, lastSync, syncError, connectHealth, healthSyncing } = useStore();
   const todayKey = useTodayKey();
   const today = schedule.get(todayKey);
   const daysToRace = daysBetween(fromKey(todayKey), fromKey(settings.raceDate));
   const next = upNext(schedule, activitiesByDate, todayKey);
-  const bests = newBests(activities, settings.planStart, todayKey);
 
   const week = today?.week ?? (todayKey < settings.planStart ? 1 : TOTAL_WEEKS);
   const compliance = weekCompliance(schedule, activitiesByDate, week, todayKey);
@@ -55,7 +52,12 @@ export default function TodayScreen() {
           </Text>
         </View>
 
-        <Text style={type.title}>{formatDay(fromKey(todayKey))}</Text>
+        <View style={styles.titleRow}>
+          <Text style={[type.title, { flex: 1 }]}>{formatDay(fromKey(todayKey))}</Text>
+          <Pressable onPress={() => router.push('/settings')} hitSlop={12} accessibilityRole="button" accessibilityLabel="Settings" style={styles.gear}>
+            <MaterialCommunityIcons name="cog-outline" size={26} color={colors.inkSoft} />
+          </Pressable>
+        </View>
 
         {!healthConnected ? (
           <Card>
@@ -72,22 +74,6 @@ export default function TodayScreen() {
             {syncError ?? (syncing ? 'Reading Health Connect…' : lastSync ? `Synced ${formatAgo(lastSync)} · pull down to refresh` : 'Not synced yet')}
           </Text>
         )}
-
-        <ThisMorning health={health} date={todayKey} />
-
-        {bests.map((b) => (
-          <View key={b.label} style={[styles.best, { borderColor: colors.warning }]} accessibilityLabel={`New best: ${b.label}`}>
-            <MaterialCommunityIcons name="trophy-outline" size={30} color={colors.warning} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.bestLabel}>New best · {b.label}</Text>
-              <Text style={styles.bestValue}>{bestValue(b)}</Text>
-              <Text style={type.small}>
-                Your last best was {bestValue({ ...b, activity: b.previous })} on{' '}
-                {fromKey(b.previous.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}.
-              </Text>
-            </View>
-          </View>
-        ))}
 
         {today ? (
           <DayWorkouts date={todayKey} />
@@ -158,17 +144,8 @@ const styles = StyleSheet.create({
   phase: { fontSize: 13, fontWeight: '600', color: colors.accent, flexShrink: 1 },
   countdown: { ...type.number, fontSize: 15 },
   between: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: spacing.sm },
-  best: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.warningSoft,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    padding: spacing.md,
-  },
-  bestLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 0.6, color: colors.warning, textTransform: 'uppercase' },
-  bestValue: { ...type.number, fontSize: 26 },
+  gear: { padding: spacing.xs },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   next: {
     flexDirection: 'row',
     alignItems: 'center',

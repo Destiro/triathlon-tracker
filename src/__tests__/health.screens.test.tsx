@@ -5,7 +5,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
 import SettingsScreen from '../app/(tabs)/settings';
-import HealthScreen from '../app/(tabs)/health';
+import StatsScreen from '../app/(tabs)/stats';
 
 jest.mock('react-native-safe-area-context', () => jest.requireActual('react-native-safe-area-context/jest/mock').default);
 jest.mock('@expo/vector-icons', () => ({ MaterialCommunityIcons: () => null }));
@@ -64,8 +64,9 @@ jest.mock('../store', () => {
   };
 });
 
-test('the Health tab shows sleep, recovery and VO2 max, with no workouts needed', async () => {
-  await render(<HealthScreen />);
+test('the Health page on Stats shows sleep, recovery and VO2 max, with no workouts needed', async () => {
+  await render(<StatsScreen />);
+  await fireEvent.press(screen.getByText('Health'));
   expect(screen.getAllByText('Sleep').length).toBeGreaterThan(0);
   expect(screen.getByText('Recovery')).toBeTruthy();
   expect(screen.getAllByText('VO2 max').length).toBeGreaterThan(0);

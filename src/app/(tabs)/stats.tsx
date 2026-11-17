@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { bestValue } from '../../bests';
 import { BarChart, LineChart } from '../../components/charts';
+import { HealthPage } from '../../components/HealthPage';
 import { colorOf, SPORT_LABELS, SportBadge, tintOf } from '../../components/sport';
 import { DriftCard, EnergyCard, MonthCard, ZonesByWeek } from '../../components/StatsCards';
 import { Card, Chips, Empty, Segments } from '../../components/ui';
@@ -20,14 +21,15 @@ const FATIGUE_COLOR = '#A78BFA';
 
 const shortDate = (key: string) => fromKey(key).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 
-type Page = 'progress' | 'records';
+type Page = 'progress' | 'records' | 'health';
 const PAGES: { value: Page; label: string }[] = [
   { value: 'progress', label: 'Progress' },
   { value: 'records', label: 'Records' },
+  { value: 'health', label: 'Health' },
 ];
 const SPORT_CHIPS = SPORTS.map((s) => ({ value: s, label: SPORT_LABELS[s] }));
 
-/** Training: how the plan is going (Progress) and what you have done so far (Records). Health has its own tab. */
+/** Stats: how the plan is going (Progress), what you have done so far (Records) and what the watch says about you (Health). */
 export default function StatsScreen() {
   const { schedule, activities, activitiesByDate, settings } = useStore();
   const todayKey = useTodayKey();
@@ -41,8 +43,9 @@ export default function StatsScreen() {
     return (
       <SafeAreaView style={styles.screen} edges={['top']}>
         <ScrollView contentContainerStyle={styles.list}>
-          <Text style={type.title}>Training</Text>
-          <Empty text="Connect Health Connect in Settings and your workouts will fill in the charts here." />
+          <Text style={type.title}>Stats</Text>
+          <Segments options={PAGES} value={page} onChange={setPage} />
+          {page === 'health' ? <HealthPage /> : <Empty text="Connect Health Connect in Settings and your workouts will fill in the charts here." />}
         </ScrollView>
       </SafeAreaView>
     );
@@ -74,7 +77,7 @@ export default function StatsScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.list}>
-        <Text style={type.title}>Training</Text>
+        <Text style={type.title}>Stats</Text>
         <Segments options={PAGES} value={page} onChange={setPage} />
 
         {page === 'progress' && (
@@ -202,6 +205,7 @@ export default function StatsScreen() {
             )}
           </>
         )}
+        {page === 'health' && <HealthPage />}
         <View style={{ height: spacing.md }} />
       </ScrollView>
     </SafeAreaView>

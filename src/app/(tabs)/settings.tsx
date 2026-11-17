@@ -1,6 +1,7 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card } from '../../components/ui';
 import { PlaceField } from '../../components/WeatherCards';
@@ -123,7 +124,12 @@ export default function SettingsScreen() {
     <SafeAreaView style={styles.screen} edges={['top']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled">
-          <Text style={type.title}>Settings</Text>
+          <View style={styles.titleRow}>
+            <Pressable onPress={() => router.back()} hitSlop={12} accessibilityRole="button" accessibilityLabel="Back" style={{ padding: spacing.xs }}>
+              <MaterialCommunityIcons name="arrow-left" size={26} color={colors.ink} />
+            </Pressable>
+            <Text style={type.title}>Settings</Text>
+          </View>
 
           <Card>
             <Text style={type.heading}>Health Connect</Text>
@@ -167,8 +173,6 @@ export default function SettingsScreen() {
                 {(healthError || syncError) && <Text style={styles.error}>{healthError ?? syncError}</Text>}
               </>
             )}
-            <Text style={type.small}>See exactly what your watch writes to Health Connect for each workout.</Text>
-            <Button label="Workout check" variant="quiet" onPress={() => router.push('/workout-check')} />
           </Card>
 
           <Card>
@@ -239,6 +243,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   list: { padding: spacing.lg, gap: spacing.md },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   input: { backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.line, borderRadius: radius.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, fontSize: 15, color: colors.ink },
   error: { color: colors.danger, fontSize: 13 },
 });

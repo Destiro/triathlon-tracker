@@ -2,7 +2,7 @@ import { byDate } from '../activities';
 import { addSessions, applyEdits, NO_EDITS } from '../plan/edits';
 import { buildSchedule } from '../plan/schedule';
 import { bestValue } from '../bests';
-import { efficiency, loadSeries, newBests, records, swimsByWater, trainingLoad, upNext, weekCompliance, weekMinutes, weekVolume } from '../stats';
+import { efficiency, loadSeries, records, swimsByWater, trainingLoad, upNext, weekCompliance, weekMinutes, weekVolume } from '../stats';
 import { activity } from './helpers';
 
 const hr = { maxHr: 190, restHr: 50 };
@@ -113,43 +113,6 @@ describe('weekMinutes', () => {
   it('counts a gym session you added', () => {
     const withGym = applyEdits(schedule, addSessions(NO_EDITS, { date: '2026-11-10', title: 'Gym', minutes: 45, repeatWeekly: false }, '2027-03-05', () => 'x'));
     expect(weekMinutes(withGym, 4) - weekMinutes(schedule, 4)).toBe(45);
-  });
-});
-
-describe('newBests', () => {
-  const ride = (id: number, date: string, km: number, hours: number) =>
-    activity({ id, sport: 'bike', date, distanceM: km * 1000, movingS: hours * 3600, avgSpeed: (km * 1000) / (hours * 3600) });
-  const first = ride(1, '2026-10-25', 30, 1.5);
-
-  it('flags an effort from the last two days that beats the best before it', () => {
-    const longer = ride(2, '2026-11-05', 45, 2.5);
-    const found = newBests([first, longer], '2026-10-19', '2026-11-06');
-    expect(found.map((b) => b.label)).toEqual(['Longest ride']);
-    expect(found[0].activity.id).toBe(2);
-    expect(found[0].previous.id).toBe(1);
-  });
-
-  it('does not call the first effort of a kind a new best', () => {
-    expect(newBests([first], '2026-10-19', '2026-10-25')).toEqual([]);
-  });
-
-  it('does not flag a best set more than two days ago', () => {
-    const longer = ride(2, '2026-11-02', 45, 2.5);
-    expect(newBests([first, longer], '2026-10-19', '2026-11-06')).toEqual([]);
-  });
-
-  it('does not flag an effort that ties or falls short of the earlier best', () => {
-    expect(newBests([first, ride(2, '2026-11-05', 30, 1.6)], '2026-10-19', '2026-11-06')).toEqual([]);
-  });
-
-  it('finds a faster pace as well as a longer distance', () => {
-    const faster = ride(2, '2026-11-06', 40, 1.5);
-    expect(newBests([first, faster], '2026-10-19', '2026-11-06').map((b) => b.label)).toEqual(['Longest ride', 'Fastest ride (20 km+)']);
-  });
-
-  it('ignores efforts from before the plan began', () => {
-    const old = ride(0, '2026-10-01', 80, 3);
-    expect(newBests([old, first, ride(2, '2026-11-05', 45, 2.5)], '2026-10-19', '2026-11-06')[0].previous.id).toBe(1);
   });
 });
 

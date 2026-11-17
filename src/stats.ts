@@ -270,32 +270,6 @@ export function records(activities: Activity[], sinceKey: string): BestEffort[] 
   return out;
 }
 
-export interface NewBest extends BestEffort {
-  /** The best effort of this kind before this one. */
-  previous: Activity;
-}
-
-/**
- * Best efforts set in the last `withinDays` days (today counts) that beat an earlier one. The first effort of a kind
- * isn't a new best, it's where the record starts.
- */
-export function newBests(activities: Activity[], sinceKey: string, todayKey: string, withinDays = 2): NewBest[] {
-  const from = toKey(addDays(fromKey(todayKey), -withinDays));
-  const out: NewBest[] = [];
-  for (const c of CATEGORIES) {
-    const score = SCORES[c.measure];
-    const pool = candidates(activities, sinceKey, c).filter((a) => a.date <= todayKey);
-    const top = best(pool, score);
-    if (!top || top.date < from) continue;
-    const previous = best(
-      pool.filter((a) => a.id !== top.id && a.start < top.start),
-      score,
-    );
-    if (previous && score(top) > score(previous)) out.push({ label: c.label, sport: c.sport, measure: c.measure, activity: top, previous });
-  }
-  return out;
-}
-
 export interface WaterSwims {
   count: number;
   metres: number;
