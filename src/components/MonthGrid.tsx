@@ -73,19 +73,10 @@ export function MonthGrid({ month, schedule, activitiesByDate, todayKey, selecte
                   accessibilityState={{ selected: key === selected, disabled: !day }}
                   style={[styles.cell, hasWeather && styles.cellTall, key === selected && styles.cellSelected, key === todayKey && styles.cellToday, !inMonth && { opacity: 0.45 }]}
                 >
+                  <View style={styles.top}>
                   <Text style={[styles.date, key === todayKey && { color: colors.accent, fontWeight: '800' }, !day && { color: colors.inkFaint }]}>
                     {d.getDate()}
                   </Text>
-                  {hasWeather && (
-                    <View style={styles.weather} accessibilityLabel={forecast ? `${describeCode(forecast.code).label}, ${Math.round(forecast.maxC)} degrees` : undefined}>
-                      {forecast && (
-                        <>
-                          <MaterialCommunityIcons name={describeCode(forecast.code).icon as never} size={13} color={wet ? colors.warning : colors.inkSoft} />
-                          <Text style={[styles.temp, wet && { color: colors.warning }]}>{Math.round(forecast.maxC)}°</Text>
-                        </>
-                      )}
-                    </View>
-                  )}
                   <View style={styles.dots}>
                     {results.map((r, i) => {
                       const colour = colorOf(r.workout.kind);
@@ -99,6 +90,17 @@ export function MonthGrid({ month, schedule, activitiesByDate, todayKey, selecte
                       );
                     })}
                   </View>
+                  </View>
+                  {hasWeather && (
+                    <View style={styles.weather} accessibilityLabel={forecast ? `${describeCode(forecast.code).label}, ${Math.round(forecast.maxC)} degrees` : undefined}>
+                      {forecast && (
+                        <>
+                          <MaterialCommunityIcons name={describeCode(forecast.code).icon as never} size={13} color={wet ? colors.warning : colors.inkSoft} />
+                          <Text style={[styles.temp, wet && { color: colors.warning }]}>{Math.round(forecast.maxC)}°</Text>
+                        </>
+                      )}
+                    </View>
+                  )}
                 </Pressable>
               );
             })}
@@ -118,22 +120,23 @@ const styles = StyleSheet.create({
   weekHours: { fontSize: 10, color: colors.inkSoft, fontFamily: 'monospace' },
   cell: {
     flex: 1,
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 6,
-    paddingBottom: 7,
+    height: 38,
+    justifyContent: 'flex-start',
+    paddingTop: 4,
+    paddingHorizontal: 4,
+    gap: 1,
     backgroundColor: colors.surface,
     borderRadius: radius.sm - 2,
     borderWidth: 1.5,
     borderColor: 'transparent',
   },
-  cellTall: { height: 66 },
-  weather: { flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: 14 },
+  cellTall: { height: 50 },
+  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  weather: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2, minHeight: 14 },
   temp: { fontSize: 10, color: colors.inkSoft, fontFamily: 'monospace' },
   cellSelected: { backgroundColor: colors.accentSoft },
   cellToday: { borderColor: colors.accent },
   date: { fontSize: 12, color: colors.inkSoft, fontFamily: 'monospace' },
-  dots: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 2, maxWidth: 30, minHeight: 8 },
-  dot: { width: 8, height: 8, borderRadius: 4, borderWidth: 1.5 },
+  dots: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 2, maxWidth: 18 },
+  dot: { width: 7, height: 7, borderRadius: 4, borderWidth: 1.5 },
 });

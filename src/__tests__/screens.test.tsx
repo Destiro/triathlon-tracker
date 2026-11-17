@@ -147,12 +147,10 @@ test('Race is split into Race day, Ready? and Checklist pages, one at a time', a
   expect(screen.queryByText('Race checklist')).toBeNull();
 
   await fireEvent.press(screen.getByText('Ready?'));
-  // The road is the first card, and the others are a button away.
+  // The road and the form are on the one page, with no buttons to choose between them.
   expect(screen.getByText('The road there')).toBeTruthy();
-  expect(screen.queryByText('Ready for the distance?')).toBeNull();
-  await fireEvent.press(screen.getByText('Distance'));
-  expect(screen.getByText('Ready for the distance?')).toBeTruthy();
-  expect(screen.queryByText('The road there')).toBeNull();
+  expect(screen.getByText('Form on race day')).toBeTruthy();
+  for (const gone of ['Ready for the distance?', 'The road', 'Distance', 'Form']) expect(screen.queryByText(gone)).toBeNull();
   expect(screen.queryByText('Predicted finish and pacing')).toBeNull();
 
   await fireEvent.press(screen.getByText('Checklist'));

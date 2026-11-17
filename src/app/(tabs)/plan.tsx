@@ -40,6 +40,15 @@ export default function PlanScreen() {
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <Text style={type.title}>Plan</Text>
+          <View style={styles.monthNav}>
+            <Pressable onPress={() => setMonth(addMonths(month, -1))} disabled={!canGoBack} hitSlop={10} accessibilityLabel="Previous month">
+              <MaterialCommunityIcons name="chevron-left" size={28} color={canGoBack ? colors.accent : colors.inkFaint} />
+            </Pressable>
+            <Text style={[type.heading, styles.monthName]}>{formatMonth(month)}</Text>
+            <Pressable onPress={() => setMonth(addMonths(month, 1))} disabled={!canGoOn} hitSlop={10} accessibilityLabel="Next month">
+              <MaterialCommunityIcons name="chevron-right" size={28} color={canGoOn ? colors.accent : colors.inkFaint} />
+            </Pressable>
+          </View>
           {!atHome && (
             <Pressable
               onPress={() => {
@@ -55,16 +64,6 @@ export default function PlanScreen() {
           )}
         </View>
 
-        <View style={styles.monthRow}>
-          <Pressable onPress={() => setMonth(addMonths(month, -1))} disabled={!canGoBack} hitSlop={12} accessibilityLabel="Previous month">
-            <MaterialCommunityIcons name="chevron-left" size={30} color={canGoBack ? colors.accent : colors.inkFaint} />
-          </Pressable>
-          <Text style={type.heading}>{formatMonth(month)}</Text>
-          <Pressable onPress={() => setMonth(addMonths(month, 1))} disabled={!canGoOn} hitSlop={12} accessibilityLabel="Next month">
-            <MaterialCommunityIcons name="chevron-right" size={30} color={canGoOn ? colors.accent : colors.inkFaint} />
-          </Pressable>
-        </View>
-
         <MonthGrid
           month={month}
           schedule={schedule}
@@ -76,14 +75,6 @@ export default function PlanScreen() {
           limits={settings}
         />
 
-        <View style={styles.legend}>
-          {LEGEND.map((k) => (
-            <View key={k} style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: colorOf(k) }]} />
-              <Text style={type.small}>{SPORT_LABELS[k]}</Text>
-            </View>
-          ))}
-        </View>
 
       </View>
 
@@ -143,6 +134,14 @@ export default function PlanScreen() {
             </Pressable>
           </>
         )}
+        <View style={styles.legend}>
+          {LEGEND.map((k) => (
+            <View key={k} style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: colorOf(k) }]} />
+              <Text style={type.small}>{SPORT_LABELS[k]}</Text>
+            </View>
+          ))}
+        </View>
       </FixedBody>
 
       {adding && (
@@ -164,10 +163,11 @@ export default function PlanScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, gap: spacing.sm },
-  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  monthNav: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  monthName: { minWidth: 120, textAlign: 'center' },
   todayButton: { backgroundColor: colors.accentSoft, borderRadius: radius.pill, paddingVertical: 6, paddingHorizontal: spacing.md },
   todayText: { color: colors.accent, fontWeight: '700', fontSize: 13 },
-  monthRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot: { width: 9, height: 9, borderRadius: 5 },

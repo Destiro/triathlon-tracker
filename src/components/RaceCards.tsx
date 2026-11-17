@@ -3,48 +3,13 @@ import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { CHECKLIST, ChecklistState, progress } from '../checklist';
 import { fromKey } from '../dates';
-import { formatDistance } from '../format';
-import { Longest, shareOf } from '../readiness';
-import { RaceDistances } from '../prediction';
 import { FormProjection } from '../projection';
 import { formState } from '../stats';
 import { colors, radius, spacing, type } from '../theme';
 import { LineChart } from './charts';
-import { colorOf, SPORT_LABELS, tintOf } from './sport';
 import { Button, Card } from './ui';
 
 const shortDate = (key: string) => fromKey(key).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-
-/** The longest swim, ride, run and brick so far against the race legs. */
-export function ReadinessCard({ longest, race }: { longest: Longest; race: RaceDistances }) {
-  const legs = [
-    { sport: 'swim' as const, done: longest.swim, of: race.swim },
-    { sport: 'bike' as const, done: longest.bike, of: race.bike },
-    { sport: 'run' as const, done: longest.run, of: race.run },
-  ];
-  return (
-    <Card title="Ready for the distance?" note="Your longest single session so far, against the race leg.">
-      {legs.map((l) => (
-        <View key={l.sport} style={{ gap: 4 }} accessibilityLabel={`${SPORT_LABELS[l.sport]}: ${formatDistance(l.done)} of ${formatDistance(l.of)}`}>
-          <View style={styles.between}>
-            <Text style={type.body}>{SPORT_LABELS[l.sport]}</Text>
-            <Text style={styles.value}>
-              {formatDistance(l.done)} / {formatDistance(l.of)}
-            </Text>
-          </View>
-          <View style={[styles.track, { backgroundColor: tintOf(l.sport) }]}>
-            <View style={[styles.fill, { width: `${Math.round(shareOf(l.done, l.of) * 100)}%`, backgroundColor: colorOf(l.sport) }]} />
-          </View>
-        </View>
-      ))}
-      <Text style={type.small}>
-        {longest.brick
-          ? `Longest brick: ${formatDistance(longest.brick.bikeM)} ride then ${formatDistance(longest.brick.runM)} run, ${shortDate(longest.brick.date)}.`
-          : 'No bike then run on the same day yet.'}
-      </Text>
-    </Card>
-  );
-}
 
 /** Where form is heading by race day, if the rest of the plan is followed. */
 export function FormCard({ projection }: { projection: FormProjection | null }) {
@@ -146,10 +111,7 @@ export function ChecklistCard({ state, onToggle, onAdd, onRemove }: ChecklistPro
 }
 
 const styles = StyleSheet.create({
-  value: { ...type.number, fontSize: 16 },
   between: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: spacing.sm },
-  track: { height: 10, borderRadius: radius.pill, overflow: 'hidden' },
-  fill: { height: 10, borderRadius: radius.pill },
   item: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   itemMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 4 },
   done: { color: colors.inkFaint, textDecorationLine: 'line-through' },

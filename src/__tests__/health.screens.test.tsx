@@ -4,7 +4,7 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
-import SettingsScreen from '../app/(tabs)/settings';
+import SettingsScreen from '../app/settings';
 import StatsScreen from '../app/(tabs)/stats';
 
 jest.mock('react-native-safe-area-context', () => jest.requireActual('react-native-safe-area-context/jest/mock').default);

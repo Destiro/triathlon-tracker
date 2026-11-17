@@ -39,7 +39,6 @@ is taller than the screen, just that card scrolls. The designs considered are in
   named constants at the top of src/prediction.ts.
 - **Pacing plan**: the predicted pace for each leg, with a heart rate ceiling for the bike (80% of max) and run (85%),
   and the first 5 km of the run held back 10 seconds a km. The numbers are constants at the top of `src/pacing.ts`.
-- **Ready for the distance?**: your longest swim, ride, run and brick so far against the race legs.
 - **Form on race day**: fitness and fatigue carried forward through the rest of the plan, counting each planned workout
   at the load you usually produce for that sport. It changes when you move, skip or add sessions.
 - **Race checklist**: a 70.3 list for bags, bike and race morning, with room for your own items. Ticks are saved on the
