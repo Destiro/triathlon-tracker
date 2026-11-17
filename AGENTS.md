@@ -39,3 +39,44 @@ Docs: https://docs.expo.dev/eas/index.md
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+
+## This project
+
+A personal Android app that follows one person's 70.3 training plan. Workouts, sleep and heart rate come from Health
+Connect (Galaxy Watch → Samsung Health → Health Connect). Everything is stored on the phone; there is no server.
+Why it is built this way: `docs/decisions/`. Where the project stood at the start: `docs/HANDOFF.md`.
+
+### Commands
+
+`just` runs the same npm scripts below (`just --list`). Run `just check` before calling a task done.
+
+| Task | Command |
+| --- | --- |
+| Install | `npm ci` |
+| Dev server | `npm start` |
+| Typecheck, lint, test together | `npm run check` |
+| One test file | `npx jest src/__tests__/plan.screen.test.tsx` |
+| Build the Android JS bundle (what CI does) | `npx expo export --platform android` |
+| Installable APK on EAS | `npm run build:android` (needs the work committed first) |
+
+Health Connect is native code, so it does not run in Expo Go. Use a development or preview build.
+
+### Style
+
+- TypeScript, strict. Logic lives in plain modules under `src/` (`stats.ts`, `matching.ts`, `prediction.ts`, `plan/`,
+  `health/summary.ts`) and is unit tested; screens in `src/app/` and `src/components/` only draw it.
+- Every new screen or component needs a test that renders it (see `src/__tests__/screens.test.tsx`: the store is
+  faked, icons and safe-area are mocked). Pure logic gets a `*.test.ts`.
+- Colours, spacing and type come from `src/theme.ts`; never hard-code them in a screen. Never use colour alone to carry
+  meaning: add a label or icon (the colours are not safe for red-green colour blindness).
+- Errors a person might see are small `Error` subclasses (`WeatherError`, `BackupError`) whose message is written for
+  them. Reading from the phone or network must fail quietly, never crash a screen.
+- Nothing saved is ever dropped by a sync. New data is merged in; see `mergeActivities` and `mergeHealth`.
+- Comments say why, not what. Copy for the app is plain and short, in sentence case.
+
+### Git
+
+- One GitHub issue at a time, on a branch named for it: `feature/<topic>` (or `fix/<topic>`).
+- Merge into `main` with a merge commit (`git merge --no-ff`) titled `Merge feature/<topic>: <what changed>`, then push.
+- CI runs on every push. Do not merge a branch with a red run.
+- Commit messages: a short summary line, a paragraph on what and why, and the `Co-Authored-By` trailer.
