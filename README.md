@@ -79,6 +79,12 @@ is taller than the screen, just that card scrolls. The designs considered are in
 - **Heart rate drift**: for rides and runs over 40 minutes, the average heart rate and speed in the first and second
   half, after a 10 minute warm-up. Drift is how much more heart rate the same speed took in the second half. Under
   5% is good. Only workouts read from Health Connect have it.
+- **Notes on workouts**: open a workout you have done and tap "Add how it went": effort from 1 to 10, how you felt, what
+  you ate and drank (carbs, fluid, sodium, caffeine, and what it was) and a few words. The note shows on the workout, with
+  the session load (effort x minutes), and is saved on the phone separately from what the watch recorded, so reading
+  Health Connect never touches it. It is part of the backup.
+- **Injury and illness**: Stats → Health → Injury / illness. Log what it is, how bad, and when it started; mark it cleared
+  or reopen it. While one is on, Today shows a reminder. These are in the backup too.
 - **Settings**: connect Health Connect, back up or restore your history, the race and its date, when week 1
   starts, and your max and resting heart rate.
 

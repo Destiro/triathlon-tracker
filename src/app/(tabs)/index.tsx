@@ -7,6 +7,7 @@ import { Ring } from '../../components/charts';
 import { DayWorkouts } from '../../components/DayWorkouts';
 import { colorOf, SPORT_LABELS, tintOf } from '../../components/sport';
 import { FixedBody } from '../../components/layout';
+import { IssueBanner } from '../../components/NoteSheets';
 import { Button, Card, Empty, Segments } from '../../components/ui';
 import { WeekStrip } from '../../components/WeekStrip';
 import { plannedAmount } from '../../components/WorkoutCard';
@@ -79,6 +80,8 @@ export default function TodayScreen() {
       </View>
 
       <FixedBody>
+        {page === 'today' && <IssueBanner />}
+
         {page === 'today' && !healthConnected && (
           <Card>
             <Text style={type.heading}>Connect Health Connect</Text>

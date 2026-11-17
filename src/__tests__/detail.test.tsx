@@ -41,6 +41,9 @@ jest.mock('../store', () => {
     moveWorkout: jest.fn(),
     removeSession: jest.fn(),
     health: {},
+    notes: {},
+    saveNote: jest.fn(),
+    issues: [],
     addSession: jest.fn(),
     setOpenWater: jest.fn(),
   };

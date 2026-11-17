@@ -61,6 +61,9 @@ jest.mock('../store', () => {
       },
     },
     healthSyncing: false,
+    notes: {},
+    saveNote: jest.fn(),
+    issues: [],
   };
   return { useTodayKey: () => mockToday, useStore: () => store };
 });

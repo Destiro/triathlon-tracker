@@ -30,6 +30,9 @@ jest.mock('../store', () => {
     moveWorkout: jest.fn(),
     addSession: jest.fn(),
     removeSession: jest.fn(),
+    notes: {},
+    saveNote: jest.fn(),
+    issues: [],
   };
   return { useTodayKey: () => '2026-11-06', useStore: () => store };
 });

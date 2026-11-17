@@ -9,6 +9,7 @@ import { dayResult, highestHeartRate } from '../stats';
 import { useStore, useTodayKey } from '../store';
 import { colors, radius, spacing, type } from '../theme';
 import { targetZones, zoneSeconds } from '../zones';
+import { NoteRow } from './NoteSheets';
 import { MoveSheet } from './PlanSheets';
 import { SportBadge } from './sport';
 import { Card } from './ui';
@@ -105,6 +106,7 @@ export function DayWorkouts({ date }: { date: string }) {
                   .join(' · ')}
               </Text>
               {a.hr && <ZoneBars seconds={zoneSeconds(a.hr, maxHr)} target={targetZones(r.workout)} maxHr={maxHr} />}
+              <NoteRow activity={a} />
             </Card>
           ))}
         </View>
@@ -122,6 +124,7 @@ export function DayWorkouts({ date }: { date: string }) {
                   <Text style={type.small}>{doneSummary(a)}</Text>
                 </View>
               </View>
+              <NoteRow activity={a} />
             </Card>
           ))}
         </>
