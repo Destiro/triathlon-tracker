@@ -1,13 +1,14 @@
 import React from 'react';
 import { Card, Empty } from './ui';
-import { LastNight, HealthStats } from './HealthCards';
+import { hasRecovery, LastNight, RecoveryCard, SleepCard, Vo2Card } from './HealthCards';
+import { OneCard } from './layout';
 import { BodyCard, OvernightCard, ReadinessSummary, ReadinessTrend } from './StatsCards';
 import { morningReadiness, readinessSeries } from '../health/readiness';
-import { baseline } from '../health/summary';
+import { baseline, latest } from '../health/summary';
 import { useStore, useTodayKey } from '../store';
 import { bodyTrend, overnightTrend } from '../statsExtra';
 
-/** Everything the watch says about you rather than your training: last night, readiness, recovery, VO2 max and body. */
+/** What the watch says about you rather than your training, one card at a time. */
 export function HealthPage() {
   const { health } = useStore();
   const todayKey = useTodayKey();
@@ -19,17 +20,30 @@ export function HealthPage() {
   const body = bodyTrend(health, todayKey, 56);
   const overnight = overnightTrend(health, todayKey, 7, baseline(health, 'breathing', todayKey));
   return (
-    <>
-      <LastNight health={health} date={todayKey} />
-      {today && (
-        <Card title="Readiness today" note="From last night's sleep, sleeping heart rate and HRV, each against your own usual.">
-          <ReadinessSummary readiness={today} />
-        </Card>
-      )}
-      <ReadinessTrend series={series} />
-      <HealthStats health={health} todayKey={todayKey} />
-      <BodyCard trend={body} />
-      <OvernightCard trend={overnight} />
-    </>
+    <OneCard
+      cards={[
+        { key: 'night', label: 'Last night', show: Boolean(health[todayKey]?.sleep), node: <LastNight health={health} date={todayKey} /> },
+        {
+          key: 'readiness',
+          label: 'Readiness',
+          show: Boolean(today) || series.filter((p) => p.score !== null).length >= 3,
+          node: (
+            <>
+              {today && (
+                <Card title="Readiness today" note="From last night's sleep, sleeping heart rate and HRV, each against your own usual.">
+                  <ReadinessSummary readiness={today} />
+                </Card>
+              )}
+              <ReadinessTrend series={series} />
+            </>
+          ),
+        },
+        { key: 'sleep', label: 'Sleep', node: <SleepCard health={health} todayKey={todayKey} /> },
+        { key: 'recovery', label: 'Recovery', show: hasRecovery(health, todayKey), node: <RecoveryCard health={health} todayKey={todayKey} /> },
+        { key: 'vo2', label: 'VO2 max', show: latest(health, 'vo2Max', todayKey) !== null, node: <Vo2Card health={health} todayKey={todayKey} /> },
+        { key: 'body', label: 'Body', show: body !== null, node: <BodyCard trend={body} /> },
+        { key: 'overnight', label: 'Overnight', show: overnight !== null, node: <OvernightCard trend={overnight} /> },
+      ]}
+    />
   );
 }

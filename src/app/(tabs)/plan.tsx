@@ -1,12 +1,13 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MonthGrid } from '../../components/MonthGrid';
 import { AddSessionSheet } from '../../components/PlanSheets';
 import { DayWeatherCard, OceanSwimCard } from '../../components/WeatherCards';
 import { SPORT_LABELS, SportBadge, colorOf } from '../../components/sport';
+import { FixedBody } from '../../components/layout';
 import { Card } from '../../components/ui';
 import { plannedAmount, STATUS } from '../../components/WorkoutCard';
 import { addMonths, formatDay, formatMonth, fromKey, startOfMonth } from '../../dates';
@@ -36,7 +37,7 @@ export default function PlanScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.list}>
+      <View style={styles.header}>
         <View style={styles.titleRow}>
           <Text style={type.title}>Plan</Text>
           {!atHome && (
@@ -84,6 +85,9 @@ export default function PlanScreen() {
           ))}
         </View>
 
+      </View>
+
+      <FixedBody>
         {day && (
           <>
             <View style={styles.dayHeader}>
@@ -139,8 +143,7 @@ export default function PlanScreen() {
             </Pressable>
           </>
         )}
-        <View style={{ height: spacing.md }} />
-      </ScrollView>
+      </FixedBody>
 
       {adding && (
         <AddSessionSheet
@@ -160,7 +163,7 @@ export default function PlanScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  list: { padding: spacing.lg, gap: spacing.md },
+  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, gap: spacing.sm },
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   todayButton: { backgroundColor: colors.accentSoft, borderRadius: radius.pill, paddingVertical: 6, paddingHorizontal: spacing.md },
   todayText: { color: colors.accent, fontWeight: '700', fontSize: 13 },

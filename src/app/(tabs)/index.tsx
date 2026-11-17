@@ -1,12 +1,13 @@
 import { router } from 'expo-router';
-import React from 'react';
+import React, { useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ring } from '../../components/charts';
 import { DayWorkouts } from '../../components/DayWorkouts';
 import { colorOf, SPORT_LABELS, tintOf } from '../../components/sport';
-import { Button, Card, Empty } from '../../components/ui';
+import { FixedBody } from '../../components/layout';
+import { Button, Card, Empty, Segments } from '../../components/ui';
 import { WeekStrip } from '../../components/WeekStrip';
 import { plannedAmount } from '../../components/WorkoutCard';
 import { daysBetween, formatDay, fromKey } from '../../dates';
@@ -16,7 +17,14 @@ import { SPORTS, unitOf, upNext, weekCompliance, weekGym, weekVolume } from '../
 import { useStore, useTodayKey } from '../../store';
 import { colors, radius, spacing, type } from '../../theme';
 
+type Page = 'today' | 'week';
+const PAGES: { value: Page; label: string }[] = [
+  { value: 'today', label: 'Today' },
+  { value: 'week', label: 'This week' },
+];
+
 export default function TodayScreen() {
+  const [page, setPage] = useState<Page>('today');
   const { settings, schedule, activitiesByDate, healthConnected, syncing, sync, lastSync, syncError, connectHealth, healthSyncing } = useStore();
   const todayKey = useTodayKey();
   const today = schedule.get(todayKey);
@@ -31,10 +39,7 @@ export default function TodayScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <ScrollView
-        contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={syncing || healthSyncing} onRefresh={sync} colors={[colors.accent]} progressBackgroundColor={colors.surface} />}
-      >
+      <View style={styles.header}>
         <View style={styles.topRow}>
           <Text style={styles.phase}>
             {today ? `Week ${week} of ${TOTAL_WEEKS} · ${PHASE_LABELS[today.phase]}${today.recovery ? ' · recovery' : ''}` : ''}
@@ -59,7 +64,22 @@ export default function TodayScreen() {
           </Pressable>
         </View>
 
-        {!healthConnected ? (
+        {healthConnected && (
+          <View style={styles.titleRow}>
+            <Text style={[type.small, { flex: 1 }, syncError ? styles.error : null]}>
+              {syncError ?? (syncing ? 'Reading Health Connect…' : lastSync ? `Synced ${formatAgo(lastSync)}` : 'Not synced yet')}
+            </Text>
+            <Pressable onPress={sync} disabled={syncing || healthSyncing} hitSlop={10} accessibilityRole="button" accessibilityLabel="Read Health Connect now">
+              <Text style={[styles.link, (syncing || healthSyncing) && { opacity: 0.5 }]}>Refresh</Text>
+            </Pressable>
+          </View>
+        )}
+
+        <Segments options={PAGES} value={page} onChange={setPage} />
+      </View>
+
+      <FixedBody>
+        {page === 'today' && !healthConnected && (
           <Card>
             <Text style={type.heading}>Connect Health Connect</Text>
             <Text style={type.body}>
@@ -69,20 +89,16 @@ export default function TodayScreen() {
             <Button label="Connect Health Connect" onPress={connectHealth} />
             {syncError && <Text style={styles.error}>{syncError}</Text>}
           </Card>
-        ) : (
-          <Text style={[type.small, syncError ? styles.error : null]}>
-            {syncError ?? (syncing ? 'Reading Health Connect…' : lastSync ? `Synced ${formatAgo(lastSync)} · pull down to refresh` : 'Not synced yet')}
-          </Text>
         )}
 
-        {today ? (
+        {page === 'today' && (today ? (
           <DayWorkouts date={todayKey} />
         ) : (
           <Empty text={todayKey < settings.planStart ? `The plan starts on ${formatDay(fromKey(settings.planStart))}.` : 'The plan has finished.'} />
-        )}
+        ))}
 
         {/* Only when nothing is left today: a rest day, or everything is done. */}
-        {next && next.date !== todayKey && (
+        {page === 'today' && next && next.date !== todayKey && (
           <Pressable
             onPress={() => router.push({ pathname: '/day/[date]', params: { date: next.date } })}
             style={[styles.next, { borderLeftColor: colorOf(next.result.workout.kind) }]}
@@ -99,7 +115,7 @@ export default function TodayScreen() {
           </Pressable>
         )}
 
-        {today && (
+        {page === 'week' && today && (
           <Card>
             <View style={styles.between}>
               <Text style={type.heading}>This week</Text>
@@ -130,15 +146,15 @@ export default function TodayScreen() {
             <WeekStrip days={daysOfWeek(schedule, week)} schedule={schedule} activitiesByDate={activitiesByDate} todayKey={todayKey} />
           </Card>
         )}
-        <View style={{ height: spacing.md }} />
-      </ScrollView>
+      </FixedBody>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  list: { padding: spacing.lg, gap: spacing.md },
+  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, gap: spacing.sm, paddingBottom: spacing.sm },
+  link: { color: colors.accent, fontWeight: '700', fontSize: 13 },
   error: { color: colors.danger },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: spacing.sm },
   phase: { fontSize: 13, fontWeight: '600', color: colors.accent, flexShrink: 1 },

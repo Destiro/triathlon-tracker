@@ -24,9 +24,13 @@ export function DayWorkouts({ date }: { date: string }) {
   const { schedule, activities, settings, activitiesByDate, moveWorkout, removeSession, setOpenWater } = useStore();
   const todayKey = useTodayKey();
   const [moving, setMoving] = useState<PlannedWorkout | null>(null);
+  // Which workout is open, by its place in the day. Until one is tapped it is the first not yet done.
+  const [picked, setPicked] = useState<number | null>(null);
   const day = schedule.get(date);
   if (!day) return null;
   const result = dayResult(schedule, activitiesByDate, date, todayKey);
+  const firstToDo = result.results.findIndex((r) => r.status !== 'done');
+  const open = picked !== null && picked < result.results.length ? picked : Math.max(firstToDo, 0);
   // The same max heart rate the training load uses: the setting, or higher if the watch has seen higher.
   const maxHr = Math.max(settings.maxHr, highestHeartRate(activities));
 
@@ -68,8 +72,13 @@ export function DayWorkouts({ date }: { date: string }) {
 
       {result.results.map((r, i) => (
         <View key={r.workout.id ?? i} style={{ gap: spacing.sm }}>
-          <WorkoutCard result={r} detailed actions={actionsFor(r.workout, r.status === 'done')} />
-          {r.activities.map((a) => (
+          <WorkoutCard
+            result={r}
+            detailed={i === open}
+            onToggle={result.results.length > 1 ? () => setPicked(i === open ? -1 : i) : undefined}
+            actions={actionsFor(r.workout, r.status === 'done')}
+          />
+          {i === open && r.activities.map((a) => (
             <Card key={a.id}>
               <View style={styles.titleRow}>
                 <Text style={[type.heading, { flex: 1 }]}>{a.name}</Text>
