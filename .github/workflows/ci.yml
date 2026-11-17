@@ -30,19 +30,22 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
-      # The github-actions reporter lists failing tests as annotations on the run.
       - name: Find the hang (temporary)
         run: |
+          set +e
+          mkdir -p /tmp/rep
           node --report-on-signal --report-signal=SIGUSR2 --report-directory=/tmp/rep node_modules/jest/bin/jest.js '(notes|issues)[.](clear[.])?screens' --ci --runInBand --testTimeout=20000 > /tmp/jest.log 2>&1 &
           PID=$!
-          sleep 100
-          kill -USR2 $PID || true
+          sleep 75
+          echo "::error title=jest log head::$(head -c 2500 /tmp/jest.log | tr '\n' ' ')"
+          kill -USR2 $PID
           sleep 8
+          ls /tmp/rep
           for f in /tmp/rep/*.json; do
-            node -e "const r=require(process.argv[1]); console.log('::error title=stack::' + (r.javascriptStack.stack||[]).slice(0,30).join(' | '))" "$f"
+            node -e "const r=require(process.argv[1]); console.log('::error title=stack::' + ((r.javascriptStack||{}).stack||[]).slice(0,30).join(' | '))" "$f"
           done
           echo "::error title=jest log tail::$(tail -c 1500 /tmp/jest.log | tr '\n' ' ')"
-          kill $PID || true
+          kill $PID
           exit 1
 
   bundle-android:
