@@ -3,7 +3,7 @@ import { addDays, daysBetween, fromKey, isDateKey, toKey } from '../dates';
 import { formatDistance, formatMinutes } from '../format';
 import { morningReadiness } from '../health/readiness';
 import { HealthByDate } from '../health/summary';
-import { activeIssues, HealthIssue, Notes } from '../notes';
+import { activeIssues, cleanNote, HealthIssue, IssueKind, NewIssue, Notes, Nutrition, SessionNote, summariseNote } from '../notes';
 import { NewSession, sessionIdOf } from '../plan/edits';
 import { PHASE_LABELS, Schedule, TOTAL_WEEKS } from '../plan/schedule';
 import { PlannedWorkout } from '../plan/types';
@@ -27,13 +27,19 @@ export interface CoachData {
 export type Proposal =
   | { kind: 'move'; workoutId: string; title: string; from: string; to: string; plannedDate: string }
   | { kind: 'add'; session: NewSession }
-  | { kind: 'remove'; sessionId: string; title: string; date: string; scope: 'one' | 'later' };
+  | { kind: 'remove'; sessionId: string; title: string; date: string; scope: 'one' | 'later' }
+  | { kind: 'note'; activityId: number; activityName: string; date: string; note: SessionNote }
+  | { kind: 'issue'; issue: NewIssue }
+  | { kind: 'clearIssue'; issueId: string; title: string; end: string };
 
 /** What the screen's store can do, so a proposal can be applied without the coach knowing about React. */
 export interface CoachActions {
   moveWorkout: (id: string, to: string, plannedDate: string) => void;
   addSession: (input: NewSession) => void;
   removeSession: (sessionId: string, scope: 'one' | 'later') => void;
+  saveNote: (workoutId: number, note: SessionNote) => void;
+  logIssue: (input: NewIssue) => void;
+  clearIssue: (id: string, end: string | undefined) => void;
 }
 
 export interface ToolOutcome {
@@ -82,7 +88,7 @@ export const READ_TOOLS: ToolDef[] = [
   },
   {
     name: 'get_activities',
-    description: `Workouts the watch recorded in a range of days (at most ${MAX_ACTIVITY_DAYS}): distance, time, pace or speed, heart rate, climbing and energy. Optionally one sport.`,
+    description: `Workouts the watch recorded in a range of days (at most ${MAX_ACTIVITY_DAYS}): distance, time, pace or speed, heart rate, climbing and energy, and the athlete's note on each if they wrote one (effort 1-10, how they felt 1-5, fuelling, words). Optionally one sport.`,
     input_schema: {
       type: 'object',
       properties: {
@@ -105,6 +111,12 @@ export const READ_TOOLS: ToolDef[] = [
     },
   },
 ];
+
+const ISSUES_TOOL: ToolDef = {
+  name: 'get_issues',
+  description: 'Every injury and illness the athlete has logged, newest first, with when it started, when it cleared (if it has), how bad it was and their notes.',
+  input_schema: { type: 'object', properties: {}, additionalProperties: false },
+};
 
 export const PLAN_TOOLS: ToolDef[] = [
   {
@@ -150,7 +162,59 @@ export const PLAN_TOOLS: ToolDef[] = [
   },
 ];
 
-export const TOOLS: ToolDef[] = [...READ_TOOLS, ...PLAN_TOOLS];
+const rating = (min: number, max: number, description: string) => ({ type: 'integer', minimum: min, maximum: max, description });
+
+export const LOG_TOOLS: ToolDef[] = [
+  {
+    name: 'save_workout_note',
+    description:
+      "Propose saving the athlete's note on a recorded workout (an activity id from get_activities): effort, how they felt, what they ate and drank, and a few words. Only the fields given change; the rest of an existing note is kept. Text replaces the old text, so include the old text if adding to it. The athlete confirms it on a card.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        activity_id: { type: 'integer' },
+        rpe: rating(1, 10, 'Session effort, 1 very easy to 10 maximal.'),
+        feel: rating(1, 5, 'How they felt, 1 awful to 5 great.'),
+        text: { type: 'string', description: 'A few words, in their words.' },
+        carbs_g: { type: 'integer', minimum: 0 },
+        fluid_ml: { type: 'integer', minimum: 0 },
+        sodium_mg: { type: 'integer', minimum: 0 },
+        caffeine_mg: { type: 'integer', minimum: 0 },
+        what_eaten: { type: 'string', description: 'What it was, such as "2 gels and a banana".' },
+      },
+      required: ['activity_id'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'log_issue',
+    description: 'Propose logging a new injury or illness. The athlete confirms it on a card.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        kind: { type: 'string', enum: ['injury', 'illness'] },
+        title: { type: 'string', description: 'What it is, such as "Left knee" or "Head cold".' },
+        start: dateField('The day it started.'),
+        severity: rating(1, 3, '1 mild, 2 moderate, 3 severe.'),
+        notes: { type: 'string' },
+      },
+      required: ['kind', 'title', 'start'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'clear_issue',
+    description: 'Propose marking a logged injury or illness (an id from get_issues) as cleared on a day. The athlete confirms it on a card.',
+    input_schema: {
+      type: 'object',
+      properties: { issue_id: { type: 'string' }, end: dateField('The day it cleared.') },
+      required: ['issue_id', 'end'],
+      additionalProperties: false,
+    },
+  },
+];
+
+export const TOOLS: ToolDef[] = [...READ_TOOLS, ISSUES_TOOL, ...PLAN_TOOLS, ...LOG_TOOLS];
 
 // ---- Reading ----
 
@@ -213,6 +277,11 @@ function activitySummary(a: Activity) {
     ...(a.kcal ? { kcal: Math.round(a.kcal) } : {}),
     ...(a.sport === 'swim' && a.openWater !== undefined ? { openWater: a.openWater } : {}),
   };
+}
+
+function withNote(a: Activity, notes: Notes) {
+  const note = notes[String(a.id)];
+  return { ...activitySummary(a), ...(note ? { note } : {}) };
 }
 
 /** Every day from `from` to `to`, or an error message when the range is unusable. */
@@ -328,6 +397,60 @@ function proposeRemove(data: CoachData, input: Record<string, unknown>): ToolOut
   return { result: PROPOSED, proposal: { kind: 'remove', sessionId: sessionIdOf(found.workout.id!), title: found.workout.title, date: found.date, scope } };
 }
 
+const posInt = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.round(v) : undefined);
+
+function proposeNote(data: CoachData, input: Record<string, unknown>): ToolOutcome {
+  const activity = data.activities.find((a) => a.id === input.activity_id);
+  if (!activity) return fail('No recorded workout has that id. Look it up with get_activities.');
+  const old = data.notes[String(activity.id)] ?? {};
+  const nutrition: Nutrition = {
+    ...old.nutrition,
+    ...(posInt(input.carbs_g) ? { carbsG: posInt(input.carbs_g) } : {}),
+    ...(posInt(input.fluid_ml) ? { fluidMl: posInt(input.fluid_ml) } : {}),
+    ...(posInt(input.sodium_mg) ? { sodiumMg: posInt(input.sodium_mg) } : {}),
+    ...(posInt(input.caffeine_mg) ? { caffeineMg: posInt(input.caffeine_mg) } : {}),
+    ...(typeof input.what_eaten === 'string' && input.what_eaten.trim() ? { what: input.what_eaten.trim() } : {}),
+  };
+  const merged: SessionNote = {
+    ...old,
+    ...(typeof input.rpe === 'number' ? { rpe: input.rpe } : {}),
+    ...(typeof input.feel === 'number' ? { feel: input.feel } : {}),
+    ...(typeof input.text === 'string' && input.text.trim() ? { text: input.text } : {}),
+    nutrition,
+  };
+  if (typeof input.rpe === 'number' && (input.rpe < 1 || input.rpe > 10)) return fail('rpe must be 1 to 10.');
+  if (typeof input.feel === 'number' && (input.feel < 1 || input.feel > 5)) return fail('feel must be 1 to 5.');
+  const note = cleanNote(merged);
+  if (!note || JSON.stringify(note) === JSON.stringify(cleanNote(old))) return fail('That would not change the note. Give at least one new value.');
+  return { result: PROPOSED, proposal: { kind: 'note', activityId: activity.id, activityName: activity.name, date: activity.date, note } };
+}
+
+function proposeIssue(data: CoachData, input: Record<string, unknown>): ToolOutcome {
+  const { kind, title, start, severity, notes } = input;
+  if (kind !== 'injury' && kind !== 'illness') return fail('kind must be injury or illness.');
+  if (typeof title !== 'string' || !title.trim()) return fail('Say what it is in title.');
+  if (typeof start !== 'string' || !isDateKey(start)) return fail('start must be a date as YYYY-MM-DD.');
+  if (start > data.todayKey) return fail('It can not start after today.');
+  const issue: NewIssue = {
+    kind: kind as IssueKind,
+    title: title.trim().slice(0, 60),
+    start,
+    ...(severity === 1 || severity === 2 || severity === 3 ? { severity } : {}),
+    ...(typeof notes === 'string' && notes.trim() ? { notes: notes.trim() } : {}),
+  };
+  return { result: PROPOSED, proposal: { kind: 'issue', issue } };
+}
+
+function proposeClear(data: CoachData, input: Record<string, unknown>): ToolOutcome {
+  const issue = data.issues.find((i) => i.id === input.issue_id);
+  if (!issue) return fail('No logged issue has that id. Look it up with get_issues.');
+  const end = input.end;
+  if (typeof end !== 'string' || !isDateKey(end)) return fail('end must be a date as YYYY-MM-DD.');
+  if (end < issue.start) return fail(`It started on ${issue.start}, so it can not clear before then.`);
+  if (end > data.todayKey) return fail('It can not clear after today.');
+  return { result: PROPOSED, proposal: { kind: 'clearIssue', issueId: issue.id, title: issue.title, end } };
+}
+
 /** Runs one tool. Reads answer straight away; changes come back as a proposal for the athlete to confirm. */
 export function runTool(name: string, input: Record<string, unknown>, data: CoachData): ToolOutcome {
   const json = (value: unknown): ToolOutcome => ({ result: JSON.stringify(value) });
@@ -349,12 +472,20 @@ export function runTool(name: string, input: Record<string, unknown>, data: Coac
         if (typeof days === 'string') return fail(days);
         const [from, to] = [days[0], days[days.length - 1]];
         const list = data.activities.filter((a) => a.date >= from && a.date <= to && (!input.sport || a.sport === input.sport));
-        return json(list.map(activitySummary));
+        return json(list.map((a) => withNote(a, data.notes)));
       }
       case 'get_health': {
         const days = range(input, MAX_HEALTH_DAYS);
         return typeof days === 'string' ? fail(days) : json(healthDays(data, days));
       }
+      case 'get_issues':
+        return json(data.issues.map((i) => ({ id: i.id, kind: i.kind, title: i.title, start: i.start, ...(i.end ? { end: i.end } : { ongoing: true }), severity: i.severity, notes: i.notes })));
+      case 'save_workout_note':
+        return proposeNote(data, input);
+      case 'log_issue':
+        return proposeIssue(data, input);
+      case 'clear_issue':
+        return proposeClear(data, input);
       case 'move_workout':
         return proposeMove(data, input);
       case 'add_session':
@@ -381,6 +512,12 @@ export function describeProposal(p: Proposal): string {
       return `Add ${p.session.title} (${formatMinutes(p.session.minutes)}) on ${shortDay(p.session.date)}${p.session.repeatWeekly ? ', then every week until the race' : ''}`;
     case 'remove':
       return `Remove ${p.title} on ${shortDay(p.date)}${p.scope === 'later' ? ' and every later week' : ''}`;
+    case 'note':
+      return `Note on ${p.activityName}, ${shortDay(p.date)}: ${[summariseNote(p.note), p.note.text].filter(Boolean).join(' · ')}`;
+    case 'issue':
+      return `Log ${p.issue.kind === 'injury' ? 'an injury' : 'an illness'}: ${p.issue.title}, since ${shortDay(p.issue.start)}`;
+    case 'clearIssue':
+      return `Mark ${p.title} as cleared on ${shortDay(p.end)}`;
   }
 }
 
@@ -392,5 +529,15 @@ export function applyProposal(p: Proposal, actions: CoachActions): void {
       return actions.addSession(p.session);
     case 'remove':
       return actions.removeSession(p.sessionId, p.scope);
+    case 'note':
+      return actions.saveNote(p.activityId, p.note);
+    case 'issue':
+      return actions.logIssue(p.issue);
+    case 'clearIssue':
+      return actions.clearIssue(p.issueId, p.end);
   }
 }
+
+/** The heading on a proposal's card. */
+export const proposalHeading = (p: Proposal): string =>
+  p.kind === 'note' ? 'Note to save' : p.kind === 'issue' || p.kind === 'clearIssue' ? 'Injury and illness log' : 'Change to your plan';

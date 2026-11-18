@@ -16,7 +16,7 @@ jest.mock('../coach/api', () => ({
 let mockKey: string | null = null;
 jest.mock('../store', () => {
   const data = jest.requireActual('./helpers').coachData();
-  const store = { ...data, moveWorkout: jest.fn(), addSession: jest.fn(), removeSession: jest.fn(), saveCoachKey: jest.fn(async () => true) };
+  const store = { ...data, moveWorkout: jest.fn(), addSession: jest.fn(), removeSession: jest.fn(), saveNote: jest.fn(), logIssue: jest.fn(), clearIssue: jest.fn(), saveCoachKey: jest.fn(async () => true) };
   return { useTodayKey: () => data.todayKey, useStore: () => ({ ...store, coachKey: mockKey }) };
 });
 
@@ -84,4 +84,19 @@ test('Cancel leaves the plan alone', async () => {
   await fireEvent.press(screen.getByText('Cancel'));
   expect(store().addSession).not.toHaveBeenCalled();
   expect(screen.getByText('Cancelled')).toBeTruthy();
+});
+
+test('telling the coach how a session went offers a note to save, under its own heading', async () => {
+  mockKey = 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz';
+  mockReplies.push(
+    { content: [{ type: 'tool_use', id: 't1', name: 'save_workout_note', input: { activity_id: 1, rpe: 7, text: 'Shoulders tired' } }], stop_reason: 'tool_use' },
+    { content: [{ type: 'text', text: 'Tap Apply to save it on this morning’s swim.' }], stop_reason: 'end_turn' },
+  );
+  await render(<CoachScreen />);
+  await fireEvent.changeText(screen.getByLabelText('Message'), 'This morning’s swim felt hard, 7 out of 10, shoulders tired');
+  await fireEvent.press(screen.getByLabelText('Send'));
+  await screen.findByText(/Tap Apply to save it/);
+  expect(screen.getByText('Note to save')).toBeTruthy();
+  await fireEvent.press(screen.getByText('Apply'));
+  expect(store().saveNote).toHaveBeenCalledWith(1, { rpe: 7, text: 'Shoulders tired' });
 });

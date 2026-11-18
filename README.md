@@ -40,7 +40,8 @@ hides a card behind another button (`docs/decisions/0008-scrolling-pages.md`).
   named constants at the top of src/prediction.ts.
 - **Coach**: a chat with Claude about your plan, training, sleep and recovery, using your own Anthropic API key (kept in
   the phone's secure storage). It looks things up rather than guessing, and when it wants to move a workout or add or
-  remove one of your own sessions it shows a card: nothing changes until you tap Apply. Choose the model in Settings.
+  remove one of your own sessions, save a note on a workout (effort, feel, fuelling) or log or clear an injury or
+  illness, it shows a card: nothing changes until you tap Apply. It reads your notes and injury log too. Choose the model in Settings.
   Your messages and what it looks up are sent to Anthropic. See `docs/decisions/0009-coach-calls-claude-directly.md`.
 - **Pacing plan**: the predicted pace for each leg, with a heart rate ceiling for the bike (80% of max) and run (85%),
   and the first 5 km of the run held back 10 seconds a km. The numbers are constants at the top of `src/pacing.ts`.

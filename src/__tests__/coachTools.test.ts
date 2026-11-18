@@ -97,10 +97,71 @@ describe('changes', () => {
   });
 
   test('applying a proposal calls the matching store action', () => {
-    const actions = { moveWorkout: jest.fn(), addSession: jest.fn(), removeSession: jest.fn() };
+    const actions = { moveWorkout: jest.fn(), addSession: jest.fn(), removeSession: jest.fn(), saveNote: jest.fn(), logIssue: jest.fn(), clearIssue: jest.fn() };
     applyProposal({ kind: 'move', workoutId: '3.4.1', title: 'Foundation Run', from: '2026-11-06', to: '2026-11-07', plannedDate: '2026-11-06' }, actions);
     expect(actions.moveWorkout).toHaveBeenCalledWith('3.4.1', '2026-11-07', '2026-11-06');
     applyProposal({ kind: 'remove', sessionId: 's1', title: 'Gym', date: '2026-11-05', scope: 'one' }, actions);
     expect(actions.removeSession).toHaveBeenCalledWith('s1', 'one');
+  });
+});
+
+describe('notes and the injury and illness log (#9)', () => {
+  const withNote = () => ({ ...coachData(), notes: { '1': { rpe: 6, text: 'Arms tired', nutrition: { fluidMl: 300 } } } });
+
+  test('recorded workouts come with the note written on them', () => {
+    const [swim] = JSON.parse(runTool('get_activities', { from: '2026-11-06', to: '2026-11-06' }, withNote()).result);
+    expect(swim.note).toEqual({ rpe: 6, text: 'Arms tired', nutrition: { fluidMl: 300 } });
+  });
+
+  test('the log lists every issue with its id, and says which are still going', () => {
+    const issues = JSON.parse(runTool('get_issues', {}, coachData()).result);
+    expect(issues).toEqual([{ id: 'cold', kind: 'illness', title: 'Head cold', start: '2026-11-04', ongoing: true, severity: 1 }]);
+  });
+
+  test('a note keeps what was already written and changes only what is given', () => {
+    const out = runTool('save_workout_note', { activity_id: 1, feel: 2, carbs_g: 40, what_eaten: 'A gel' }, withNote());
+    expect(out.proposal).toEqual({
+      kind: 'note',
+      activityId: 1,
+      activityName: 'Morning Swim',
+      date: '2026-11-06',
+      note: { rpe: 6, feel: 2, text: 'Arms tired', nutrition: { fluidMl: 300, carbsG: 40, what: 'A gel' } },
+    });
+    expect(describeProposal(out.proposal!)).toBe('Note on Morning Swim, Fri, 6 Nov: Effort 6/10 · Hard · Felt poor · 40 g carbs · 300 ml fluid · A gel · Arms tired');
+  });
+
+  test.each([
+    [{ activity_id: 99, rpe: 5 }, /No recorded workout/],
+    [{ activity_id: 1, rpe: 11 }, /rpe must be 1 to 10/],
+    [{ activity_id: 1, feel: 0 }, /feel must be 1 to 5/],
+    [{ activity_id: 1, rpe: 6 }, /would not change/],
+  ])('refuses a note it can not save: %j', (input, reason) => {
+    expect(runTool('save_workout_note', input, withNote())).toMatchObject({ isError: true, result: expect.stringMatching(reason) });
+  });
+
+  test('logging an injury is a proposal, and it can not start in the future', () => {
+    const out = runTool('log_issue', { kind: 'injury', title: ' Left calf ', start: '2026-11-06', severity: 2, notes: 'Tight on the run' }, coachData());
+    expect(out.proposal).toEqual({ kind: 'issue', issue: { kind: 'injury', title: 'Left calf', start: '2026-11-06', severity: 2, notes: 'Tight on the run' } });
+    expect(describeProposal(out.proposal!)).toBe('Log an injury: Left calf, since Fri, 6 Nov');
+    expect(runTool('log_issue', { kind: 'injury', title: 'Calf', start: '2026-11-09' }, coachData()).isError).toBe(true);
+    expect(runTool('log_issue', { kind: 'flu', title: 'Flu', start: '2026-11-05' }, coachData()).isError).toBe(true);
+  });
+
+  test('clearing an issue checks the day', () => {
+    const out = runTool('clear_issue', { issue_id: 'cold', end: '2026-11-06' }, coachData());
+    expect(out.proposal).toEqual({ kind: 'clearIssue', issueId: 'cold', title: 'Head cold', end: '2026-11-06' });
+    expect(describeProposal(out.proposal!)).toBe('Mark Head cold as cleared on Fri, 6 Nov');
+    expect(runTool('clear_issue', { issue_id: 'cold', end: '2026-11-01' }, coachData()).isError).toBe(true);
+    expect(runTool('clear_issue', { issue_id: 'nope', end: '2026-11-06' }, coachData()).isError).toBe(true);
+  });
+
+  test('applying them saves the note, logs the issue or clears it', () => {
+    const actions = { moveWorkout: jest.fn(), addSession: jest.fn(), removeSession: jest.fn(), saveNote: jest.fn(), logIssue: jest.fn(), clearIssue: jest.fn() };
+    applyProposal({ kind: 'note', activityId: 1, activityName: 'Morning Swim', date: '2026-11-06', note: { rpe: 7 } }, actions);
+    expect(actions.saveNote).toHaveBeenCalledWith(1, { rpe: 7 });
+    applyProposal({ kind: 'issue', issue: { kind: 'injury', title: 'Calf', start: '2026-11-06' } }, actions);
+    expect(actions.logIssue).toHaveBeenCalledWith({ kind: 'injury', title: 'Calf', start: '2026-11-06' });
+    applyProposal({ kind: 'clearIssue', issueId: 'cold', title: 'Head cold', end: '2026-11-06' }, actions);
+    expect(actions.clearIssue).toHaveBeenCalledWith('cold', '2026-11-06');
   });
 });
