@@ -23,7 +23,7 @@ beforeEach(() => {
 jest.mock('../store', () => {
   const { buildSchedule } = jest.requireActual('../plan/schedule');
   const { combine } = jest.requireActual('../health/summary');
-  const settings = { planStart: '2026-10-19', raceDate: '2027-03-05', raceName: 'Ironman 70.3 New Zealand', maxHr: 190, restHr: 55 };
+  const settings = { planStart: '2026-10-19', raceDate: '2027-03-05', raceName: 'Ironman 70.3 New Zealand', maxHr: 190, restHr: 55, coachModel: 'sonnet' };
   const nights: Record<string, object> = {};
   const hrv: Record<string, number> = {};
   for (let d = 1; d <= 10; d++) {
@@ -141,4 +141,13 @@ test('Settings offers to connect Health Connect', async () => {
   await render(<SettingsScreen />);
   await fireEvent.press(screen.getByText('Connect Health Connect'));
   expect(useStore().connectHealth).toHaveBeenCalled();
+});
+
+test('Settings lets you choose the coach model and says when no API key is saved', async () => {
+  const { useStore } = jest.requireMock('../store');
+  await render(<SettingsScreen />);
+  expect(screen.getByText('Coach')).toBeTruthy();
+  expect(screen.getByText('No API key yet. Add one on the Coach tab.')).toBeTruthy();
+  await fireEvent.press(screen.getByText('Haiku 5.5'));
+  expect(useStore().updateSettings).toHaveBeenCalledWith({ coachModel: 'haiku' });
 });

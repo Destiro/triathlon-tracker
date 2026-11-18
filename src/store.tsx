@@ -8,6 +8,7 @@ import { addDays, fromKey, toKey } from './dates';
 import * as healthConnect from './health/connect';
 import { HealthByDate, mergeHealth } from './health/summary';
 import { mergeWorkouts, needsReading, READ_VERSION } from './health/workouts';
+import { clearKey, loadKey, saveKey } from './coach/key';
 import { addIssue, HealthIssue, NewIssue, Notes, readIssues, readNotes, removeIssue, resolveIssue, SessionNote, setNote } from './notes';
 import { addSessions, applyEdits, NewSession, NO_EDITS, PlanEdits, removeSession, setMove } from './plan/edits';
 import { buildSchedule, Schedule } from './plan/schedule';
@@ -118,6 +119,11 @@ interface Store {
   /** Marks an issue cleared on a day, or open again when `end` is undefined. */
   clearIssue: (id: string, end: string | undefined) => void;
   deleteIssue: (id: string) => void;
+  /** Your Anthropic API key for the coach, from secure storage. Null until one is saved. */
+  coachKey: string | null;
+  /** Saves the key. Resolves to false when the phone's secure storage refused it. */
+  saveCoachKey: (key: string) => Promise<boolean>;
+  clearCoachKey: () => Promise<void>;
 }
 
 const StoreContext = createContext<Store | null>(null);
@@ -381,6 +387,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const clearIssue = useCallback((id: string, end: string | undefined) => setIssues((list) => resolveIssue(list, id, end)), []);
   const deleteIssue = useCallback((id: string) => setIssues((list) => removeIssue(list, id)), []);
 
+  const [coachKey, setCoachKey] = useState<string | null>(null);
+  useEffect(() => {
+    loadKey().then(setCoachKey);
+  }, []);
+  const saveCoachKey = useCallback(async (key: string) => {
+    const ok = await saveKey(key.trim());
+    if (ok) setCoachKey(key.trim());
+    return ok;
+  }, []);
+  const clearCoachKey = useCallback(async () => {
+    await clearKey();
+    setCoachKey(null);
+  }, []);
+
   const backupData = (): BackupData => ({ settings, activities: stored, edits, waterOverrides, health, notes, issues });
 
   const exportBackup = async (): Promise<string> => {
@@ -456,6 +476,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     logIssue,
     clearIssue,
     deleteIssue,
+    coachKey,
+    saveCoachKey,
+    clearCoachKey,
   };
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

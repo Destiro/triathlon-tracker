@@ -17,7 +17,7 @@ and shown in metres here, rounded to the nearest 25 m (1,450 yd → 1,325 m). Sh
 
 ## What it does
 
-Four tabs: Today, Plan, Stats and Race. Settings opens from the cog at the top right of Today. Each page is one
+Five tabs: Today, Plan, Stats, Race and Coach. Settings opens from the cog at the top right of Today. Each page is one
 scrolling list of cards; Stats and Race have a row of buttons at the top for their pages, and nothing below that
 hides a card behind another button (`docs/decisions/0008-scrolling-pages.md`).
 
@@ -38,6 +38,10 @@ hides a card behind another button (`docs/decisions/0008-scrolling-pages.md`).
   how many recent sessions it has to go on. It knows nothing about race-day effort, the course or the weather, and
   hills skew the bike speed because there is no power meter. It reads slow early in the plan. All the numbers are
   named constants at the top of src/prediction.ts.
+- **Coach**: a chat with Claude about your plan, training, sleep and recovery, using your own Anthropic API key (kept in
+  the phone's secure storage). It looks things up rather than guessing, and when it wants to move a workout or add or
+  remove one of your own sessions it shows a card: nothing changes until you tap Apply. Choose the model in Settings.
+  Your messages and what it looks up are sent to Anthropic. See `docs/decisions/0009-coach-calls-claude-directly.md`.
 - **Pacing plan**: the predicted pace for each leg, with a heart rate ceiling for the bike (80% of max) and run (85%),
   and the first 5 km of the run held back 10 seconds a km. The numbers are constants at the top of `src/pacing.ts`.
 - **Form on race day**: fitness and fatigue carried forward through the rest of the plan, counting each planned workout

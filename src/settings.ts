@@ -1,3 +1,5 @@
+import { COACH_MODELS, CoachModel, DEFAULT_COACH_MODEL } from './coach/api';
+
 /** A town or beach found by name, with where it is. */
 export interface Place {
   name: string;
@@ -22,6 +24,8 @@ export interface Settings {
   waveLimit: number;
   /** Below this sea temperature the weather card says to wear a wetsuit. */
   wetsuitBelow: number;
+  /** Which Claude model the coach uses. */
+  coachModel: CoachModel;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -34,6 +38,7 @@ export const DEFAULT_SETTINGS: Settings = {
   windLimit: 30,
   waveLimit: 1,
   wetsuitBelow: 20,
+  coachModel: DEFAULT_COACH_MODEL,
 };
 
 // Versions before 8 had the race on Friday 5 March. Every version saves the whole of the settings, so that wrong
@@ -43,6 +48,7 @@ const OLD_RACE_DATE = '2027-03-05';
 /** Saved settings filled out with the defaults, with the old wrong race date corrected. */
 export function loadSettings(saved: Partial<Settings> | undefined): Settings {
   const settings = { ...DEFAULT_SETTINGS, ...saved };
+  if (!Object.keys(COACH_MODELS).includes(settings.coachModel)) settings.coachModel = DEFAULT_COACH_MODEL;
   if (settings.raceDate === OLD_RACE_DATE && settings.raceName === DEFAULT_SETTINGS.raceName) settings.raceDate = DEFAULT_SETTINGS.raceDate;
   return settings;
 }

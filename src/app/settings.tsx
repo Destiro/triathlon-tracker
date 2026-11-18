@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBottomInset } from '../components/layout';
-import { Button, Card } from '../components/ui';
+import { Button, Card, Chips } from '../components/ui';
+import { COACH_MODELS, CoachModel } from '../coach/api';
 import { PlaceField } from '../components/WeatherCards';
 import { fromKey, isDateKey } from '../dates';
 import { openSettings as openHealthConnect } from '../health/connect';
@@ -71,6 +72,8 @@ export default function SettingsScreen() {
     setPlace,
     clearPlace,
     refreshWeather,
+    coachKey,
+    clearCoachKey,
   } = useStore();
   const healthDays = Object.keys(health).length;
   const [backupMessage, setBackupMessage] = useState('');
@@ -111,6 +114,12 @@ export default function SettingsScreen() {
         { text: 'Stop reading', style: 'destructive', onPress: disconnectHealth },
       ],
     );
+
+  const confirmKeyRemoval = () =>
+    Alert.alert('Remove the API key?', 'The coach stops working until you add a key again. Nothing else changes.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: () => void clearCoachKey() },
+    ]);
 
   const confirmRestore = () =>
     Alert.alert(
@@ -209,6 +218,25 @@ export default function SettingsScreen() {
             <Field label="Think indoor when wind is above (km/h)" value={String(settings.windLimit)} keyboard="numeric" onCommit={limit('windLimit', 5, 100, 'km/h')} />
             <Field label="Think pool when waves are above (m)" value={String(settings.waveLimit)} keyboard="numeric" onCommit={limit('waveLimit', 0.2, 5, 'm')} />
             <Field label="Wetsuit when the sea is under (°)" value={String(settings.wetsuitBelow)} keyboard="numeric" onCommit={limit('wetsuitBelow', 8, 30, '°')} />
+          </Card>
+
+          <Card>
+            <Text style={type.heading}>Coach</Text>
+            <Text style={type.small}>Claude, through Anthropic&apos;s API with your own key. Each message is billed to your Anthropic account.</Text>
+            <Chips
+              options={(Object.keys(COACH_MODELS) as CoachModel[]).map((m) => ({ value: m, label: COACH_MODELS[m].label }))}
+              value={settings.coachModel}
+              onChange={(coachModel) => updateSettings({ coachModel })}
+            />
+            <Text style={type.small}>{COACH_MODELS[settings.coachModel].note} A new chat uses the model chosen here.</Text>
+            {coachKey ? (
+              <>
+                <Text style={type.small}>API key saved on this phone.</Text>
+                <Button label="Remove API key" variant="quiet" onPress={confirmKeyRemoval} />
+              </>
+            ) : (
+              <Text style={type.small}>No API key yet. Add one on the Coach tab.</Text>
+            )}
           </Card>
 
           <Card>
