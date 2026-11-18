@@ -1,8 +1,11 @@
 name: Coach evals
 
-# Puts the coach through every scenario in evals/scenarios.ts against the real Claude API and grades it. Run it by
-# hand (GitHub app > Actions > Coach evals > Run workflow) after changing the prompt, the tools or the model. Needs the
-# ANTHROPIC_API_KEY secret; a full run costs roughly one to two US dollars.
+# Puts the coach through every scenario in evals/scenarios.ts against the real Claude API and grades it.
+#
+# SWITCHED OFF: each run is billed to the Anthropic account, so the evals only run when the repository variable
+# COACH_EVALS_ENABLED is "true" (Settings > Secrets and variables > Actions > Variables). Until then a run stops at
+# once and costs nothing. When on, it also needs the ANTHROPIC_API_KEY secret; a full run costs roughly one to two
+# US dollars.
 on:
   workflow_dispatch:
     inputs:
@@ -26,8 +29,17 @@ permissions:
   contents: read
 
 jobs:
+  switched-off:
+    name: Coach evals are switched off
+    if: ${{ vars.COACH_EVALS_ENABLED != 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "Live coach evals are switched off, so nothing was sent to Claude. Set the repository variable COACH_EVALS_ENABLED to true to run them." >> "$GITHUB_STEP_SUMMARY"
+
   evals:
     name: Coach evals (${{ inputs.model }})
+    if: ${{ vars.COACH_EVALS_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -48,6 +60,7 @@ jobs:
       - name: Run the evals
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          COACH_EVALS_ENABLED: 'true'
         run: npm run eval -- --model "${{ inputs.model }}" --judge "${{ inputs.judge }}" --repeat "${{ inputs.repeat }}"
       - name: Keep the transcripts
         if: always()
