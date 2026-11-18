@@ -78,7 +78,7 @@ test('Today lists every workout, with the first one still to do open and the res
   expect(screen.getByText('Main 20 min')).toBeTruthy();
   expect(screen.getByText('40 min in total')).toBeTruthy();
   // The swim's steps are not.
-  expect(screen.queryByText('Main 800 yd')).toBeNull();
+  expect(screen.queryByText('Main 725 m')).toBeNull();
   expect(screen.queryByText('Morning Swim')).toBeNull();
   for (const gone of ['UP NEXT', 'Up next', 'Later today', 'Done today']) expect(screen.queryByText(gone)).toBeNull();
 });
@@ -86,8 +86,8 @@ test('Today lists every workout, with the first one still to do open and the res
 test('tapping the other workout on Today opens it and closes the first', async () => {
   await render(<TodayScreen />);
   await fireEvent.press(screen.getByText('Swim Fartlek + Sprint'));
-  expect(screen.getByText('Main 800 yd')).toBeTruthy();
-  expect(screen.getByText('1,400 yd in total')).toBeTruthy();
+  expect(screen.getByText('Main 725 m')).toBeTruthy();
+  expect(screen.getByText('1,275 m in total')).toBeTruthy();
   expect(screen.getByText('Morning Swim')).toBeTruthy();
   expect(screen.queryByText('Main 20 min')).toBeNull();
 });

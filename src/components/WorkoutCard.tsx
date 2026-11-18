@@ -3,7 +3,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Activity } from '../activities';
 import { fromKey } from '../dates';
-import { formatClock, formatDistance, formatMinutes, formatYards } from '../format';
+import { formatClock, formatDistance, formatMinutes } from '../format';
 import { Status, WorkoutResult } from '../matching';
 import { stepBlocks } from '../plan/steps';
 import { PlannedWorkout } from '../plan/types';
@@ -18,9 +18,8 @@ export const STATUS: Record<Status, { icon: string; color: string; label: string
   upcoming: { icon: 'circle-outline', color: colors.inkFaint, label: 'Planned' },
 };
 
-/** "1,300 yd", "1 h 15", or the legs of a brick or race. */
+/** "1,200 m", "1 h 15", or the legs of a brick or race. */
 export function plannedAmount(w: PlannedWorkout): string {
-  if (w.kind === 'swim' && w.yards) return formatYards(w.yards);
   if (w.kind === 'swim' && w.metres) return formatDistance(w.metres, true);
   if (w.legs?.some((l) => l.metres)) return w.legs.map((l) => formatDistance(l.metres ?? 0)).join(' · ');
   if (w.minutes) return formatMinutes(w.minutes);
@@ -51,7 +50,7 @@ export function WorkoutCard({ result, detailed, actions, onToggle }: Props) {
   const { workout, status, activities } = result;
   const s = STATUS[status];
   const blocks = detailed ? stepBlocks(workout) : null;
-  const unit = workout.kind === 'swim' ? ' yd' : ' min';
+  const unit = workout.kind === 'swim' ? ' m' : ' min';
   return (
     <View style={[styles.card, { borderLeftColor: colorOf(workout.kind) }]}>
       <Pressable

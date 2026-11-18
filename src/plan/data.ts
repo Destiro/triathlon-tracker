@@ -2,8 +2,10 @@
  * Triathlete's "20-Week Training Plan for Your First 70.3" (Matt Fitzgerald), as written.
  * https://www.triathlete.com/training/20-week-training-plan-first-70-3-triathlon/
  *
- * Swims are written in yards in the plan and kept in yards here, so the app shows what the page says. The metres
- * they work out to are used to compare with what the watch records.
+ * Swims are written in yards on the page and kept as the page's numbers here, so each can be checked against it. They
+ * are shown in metres: the total, warm-up, cool-down and long sets are converted to the nearest 25 m, while short
+ * reps (25s to 400s) keep their numbers, as they would in a metre pool. So a set's steps can add up to a little more
+ * than its total.
  */
 import { yardsToMetres } from '../format';
 import { Leg, PlannedWorkout, PlanWeek, WorkoutKind } from './types';
@@ -13,16 +15,16 @@ const LOW = 'low aerobic intensity';
 
 // ---- Swims ----
 
-const swimWarm = (m: number) => `WU: ${m} @ ${LOW}`;
-const swimCool = (m: number) => `CD: ${m} @ ${LOW}`;
+const swimWarm = (yards: number) => `WU: ${yardsToMetres(yards)} m @ ${LOW}`;
+const swimCool = (yards: number) => `CD: ${yardsToMetres(yards)} m @ ${LOW}`;
 const DRILLS = '8 × 25 drills, RI 0:10';
 const KICK = '8 × 25 kick, RI 0:15';
 
-const swim = (title: string, yards: number, ...steps: string[]): PlannedWorkout => ({ kind: 'swim', title, yards, metres: yardsToMetres(yards), steps });
+const swim = (title: string, yards: number, ...steps: string[]): PlannedWorkout => ({ kind: 'swim', title, metres: yardsToMetres(yards), steps });
 
 /** The long steady Sunday swim: warm-up, one continuous main set, cool-down. */
 const steadySwim = (ends: number, main: number) =>
-  swim('Swim Base', ends * 2 + main, swimWarm(ends), `MS: ${main} @ ${MOD}`, swimCool(ends));
+  swim('Swim Base', ends * 2 + main, swimWarm(ends), `MS: ${yardsToMetres(main)} m @ ${MOD}`, swimCool(ends));
 
 /** A time trial: the main set is swum as if racing. */
 const swimTimeTrial = (ends: number, main: number) =>
@@ -30,7 +32,7 @@ const swimTimeTrial = (ends: number, main: number) =>
     'Swim Time Trial',
     ends * 2 + main,
     swimWarm(ends),
-    `MS: ${main} @ maximum intensity, as if it were a race`,
+    `MS: ${yardsToMetres(main)} m @ maximum intensity, as if it were a race`,
     swimCool(ends),
   );
 

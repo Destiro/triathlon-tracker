@@ -2,12 +2,12 @@ import { PlannedWorkout } from './types';
 
 export interface StepBlock {
   label: 'WU' | 'Main' | 'CD';
-  /** Minutes for rides and runs, yards for swims (as the plan writes them). */
+  /** Minutes for rides and runs, metres for swims. */
   amount: number;
 }
 
-// "WU: 10 min @ …" for rides and runs, "WU: 300 @ …" for swims.
-const END = /^(WU|CD): (\d+)( min)? @/;
+// "WU: 10 min @ …" for rides and runs, "WU: 275 m @ …" for swims.
+const END = /^(WU|CD): (\d+)( min| m)? @/;
 
 /**
  * Warm-up, main set and cool-down as three blocks that add up to the whole workout, for drawing as a bar.
@@ -16,11 +16,11 @@ const END = /^(WU|CD): (\d+)( min)? @/;
  * don't start and end with a plain warm-up and cool-down, as in bricks, races and some swims.
  */
 export function stepBlocks(w: PlannedWorkout): StepBlock[] | null {
-  const total = w.kind === 'swim' ? w.yards : w.kind === 'bike' || w.kind === 'run' ? w.minutes : undefined;
+  const total = w.kind === 'swim' ? w.metres : w.kind === 'bike' || w.kind === 'run' ? w.minutes : undefined;
   if (!total || w.steps.length < 3) return null;
   const parse = (line: string, want: 'WU' | 'CD') => {
     const m = END.exec(line);
-    if (!m || m[1] !== want || (w.kind === 'swim') === Boolean(m[3])) return null;
+    if (!m || m[1] !== want || m[3] !== (w.kind === 'swim' ? ' m' : ' min')) return null;
     return Number(m[2]);
   };
   const wu = parse(w.steps[0], 'WU');

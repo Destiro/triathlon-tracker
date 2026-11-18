@@ -20,9 +20,7 @@ export interface PlannedWorkout {
   title: string;
   /** Planned time, for everything except swims and races. */
   minutes?: number;
-  /** Planned distance, for swims, as written in the plan. The plan swims in yards. */
-  yards?: number;
-  /** Planned distance, for swims, in metres: the yards converted, for comparing with what the watch recorded. */
+  /** Planned distance, for swims, in metres. */
   metres?: number;
   /** Where this workout sits in the plan, as week.day.number (day 0 is Monday). Stays the same when it is moved. */
   id?: string;
