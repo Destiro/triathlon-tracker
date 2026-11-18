@@ -101,6 +101,8 @@ Needs Node 22 or newer (Expo SDK 58).
     npx expo start
 
 Health Connect needs a development or preview build, not Expo Go: `npm run build:android` makes an APK with EAS.
+From the phone: GitHub app > Actions > Android build > Run workflow; the run's summary links to the build and its
+APK. That workflow needs an `EXPO_TOKEN` repository secret (an access token from expo.dev).
 Without Health Connect connected the app shows the plan and an empty stats page.
 
 ## Workouts from Health Connect
