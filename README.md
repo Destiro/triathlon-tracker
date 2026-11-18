@@ -41,7 +41,9 @@ hides a card behind another button (`docs/decisions/0008-scrolling-pages.md`).
 - **Coach**: a chat with Claude about your plan, training, sleep and recovery, using your own Anthropic API key (kept in
   the phone's secure storage). It looks things up rather than guessing, and when it wants to move a workout or add or
   remove one of your own sessions, save a note on a workout (effort, feel, fuelling) or log or clear an injury or
-  illness, it shows a card: nothing changes until you tap Apply. It reads your notes and injury log too. Choose the model in Settings.
+  illness, it shows a card: nothing changes until you tap Apply. It reads your notes and injury log too.
+  Tap the microphone to speak a message: the phone's own speech recognition types it into the box, free, for you to
+  check before tapping Send. Choose the model in Settings.
   Your messages and what it looks up are sent to Anthropic. See `docs/decisions/0009-coach-calls-claude-directly.md`.
   Its answers can be tested against set conversations with `npm run eval`; those live runs are billed, so they are
   switched off until `COACH_EVALS_ENABLED` is set (see `evals/README.md`).
