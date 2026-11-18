@@ -19,16 +19,16 @@ describe('stepBlocks', () => {
     expect(stepBlocks(fartlek)?.map((b) => b.amount)).toEqual([5, 25, 5]);
   });
 
-  it('works in yards for swims, as the plan writes them', () => {
-    const swim = week3[4][0]; // Friday: 1,400 yd with 300 either end
-    expect(stepBlocks(swim)?.map((b) => b.amount)).toEqual([300, 800, 300]);
+  it('works in metres for swims', () => {
+    const swim = week3[4][0]; // Friday: 1,400 yd on the page with 300 either end, so 1,275 m with 275 either end
+    expect(stepBlocks(swim)?.map((b) => b.amount)).toEqual([275, 725, 275]);
   });
 
   it('adds up to the planned amount for every ride, run and swim it can split', () => {
     for (const w of PLAN.flatMap((week) => week.days.flat())) {
       const blocks = stepBlocks(w);
       if (!blocks) continue;
-      expect(blocks.reduce((sum, b) => sum + b.amount, 0)).toBe(w.kind === 'swim' ? w.yards : w.minutes);
+      expect(blocks.reduce((sum, b) => sum + b.amount, 0)).toBe(w.kind === 'swim' ? w.metres : w.minutes);
       expect(blocks.every((b) => b.amount > 0)).toBe(true);
     }
   });

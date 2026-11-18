@@ -8,11 +8,11 @@ const minutes = (week: number, sport: Sport) =>
     .filter((l) => l.sport === sport)
     .reduce((sum, l) => sum + (l.minutes ?? 0), 0);
 
-const swimYards = (week: number) =>
+const swimMetres = (week: number) =>
   PLAN[week - 1].days
     .flat()
     .filter((w) => w.kind === 'swim')
-    .reduce((sum, w) => sum + (w.yards ?? 0), 0);
+    .reduce((sum, w) => sum + (w.metres ?? 0), 0);
 
 describe('the 20 week plan', () => {
   it('has 20 numbered weeks of 7 days, with Monday off and race day last', () => {
@@ -44,21 +44,30 @@ describe('the 20 week plan', () => {
     expect(minutes(1, 'run')).toBe(60 + 45);
   });
 
-  it('matches the page week 17 swim total, in the yards the page uses', () => {
-    expect(swimYards(17)).toBe(6700);
+  it('matches the page week 17 swims (2,100 + 2,100 + 2,500 yd), each in metres to the nearest 25', () => {
+    expect(swimMetres(17)).toBe(1925 + 1925 + 2275);
   });
 
-  it('works out the metres of every swim from its yards', () => {
+  it('gives every swim a whole number of 25 m lengths and no yards anywhere', () => {
     const swims = PLAN.flatMap((week) => week.days.flat()).filter((w) => w.kind === 'swim');
     expect(swims.length).toBeGreaterThan(0);
-    for (const w of swims) expect(w.metres).toBe(Math.round(w.yards! * 0.9144));
+    for (const w of swims) {
+      expect(w.metres! % 25).toBe(0);
+      expect(w.steps.join(' ')).not.toMatch(/yd|yard/i);
+    }
+  });
+
+  it('turns the 1,450 yd swim into 1,325 m', () => {
+    const swim = PLAN[4].days.flat().find((w) => w.kind === 'swim');
+    expect(swim?.metres).toBe(1325);
+    expect(swim?.steps[0]).toBe('WU: 275 m @ low aerobic intensity');
   });
 
   it('adds up a swim from its warm-up, main set and cool-down', () => {
-    // Week 2 Sunday: WU 300, MS 1,000, CD 300.
+    // Week 2 Sunday: WU 300, MS 1,000, CD 300 yd on the page.
     const sunday = PLAN[1].days[6].find((w) => w.kind === 'swim');
-    expect(sunday?.yards).toBe(1600);
-    expect(sunday?.metres).toBe(1463);
+    expect(sunday?.metres).toBe(1475);
+    expect(sunday?.steps).toEqual(['WU: 275 m @ low aerobic intensity', 'MS: 925 m @ moderate aerobic intensity', 'CD: 275 m @ low aerobic intensity']);
   });
 
   it('gives every workout at least one step to read', () => {

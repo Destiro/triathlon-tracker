@@ -28,11 +28,11 @@ export function formatDistance(metres: number, inMetres = false): string {
   return `${(metres / 1000).toFixed(metres >= 100000 ? 0 : 1)} km`;
 }
 
-/** The plan swims in yards; the watch records metres. */
-export const yardsToMetres = (yards: number): number => Math.round(yards * 0.9144);
-
-/** 1400 → "1,400 yd". */
-export const formatYards = (yards: number): string => `${Math.round(yards).toLocaleString()} yd`;
+/**
+ * The plan is written in yards; the app works in metres. Rounded to the nearest 25 m, a pool length, so a 1,450 yd
+ * swim reads 1,325 m.
+ */
+export const yardsToMetres = (yards: number): number => Math.round((yards * 0.9144) / 25) * 25;
 
 /** Running pace per km from metres per second: "5:12 /km". */
 export const formatRunPace = (speed: number): string => (speed > 0 ? `${formatClock(1000 / speed)} /km` : '–');
