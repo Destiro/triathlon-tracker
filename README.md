@@ -43,6 +43,7 @@ hides a card behind another button (`docs/decisions/0008-scrolling-pages.md`).
   remove one of your own sessions, save a note on a workout (effort, feel, fuelling) or log or clear an injury or
   illness, it shows a card: nothing changes until you tap Apply. It reads your notes and injury log too. Choose the model in Settings.
   Your messages and what it looks up are sent to Anthropic. See `docs/decisions/0009-coach-calls-claude-directly.md`.
+  Its answers are tested against set conversations with `npm run eval` (see `evals/README.md`).
 - **Pacing plan**: the predicted pace for each leg, with a heart rate ceiling for the bike (80% of max) and run (85%),
   and the first 5 km of the run held back 10 seconds a km. The numbers are constants at the top of `src/pacing.ts`.
 - **Form on race day**: fitness and fatigue carried forward through the rest of the plan, counting each planned workout

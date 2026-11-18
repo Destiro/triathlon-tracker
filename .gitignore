@@ -46,3 +46,6 @@ worker/.wrangler/
 
 # Remembers which Worker code was last deployed from this computer
 worker/.last-deploy
+
+# Coach eval transcripts (npm run eval)
+evals/results/
