@@ -1,7 +1,32 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import { LayoutChangeEvent, ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { colors, spacing } from '../theme';
 import { Chips } from './ui';
+
+/**
+ * Room to leave under the last thing on a screen so the phone's navigation bar does not cover it. Screens without the
+ * tab bar need it: the app draws edge to edge, so their content runs behind the system bar. Zero where no safe-area
+ * provider is around (a modal on some phones, the tests).
+ */
+export function useBottomInset(): number {
+  return useContext(SafeAreaInsetsContext)?.bottom ?? 0;
+}
+
+/** A screen body that scrolls as one page. Pass bottomInset on screens that have no tab bar under them. */
+export function ScrollBody({ children, bottomInset }: { children: React.ReactNode; bottomInset?: boolean }) {
+  const bottom = useBottomInset();
+  return (
+    <ScrollView
+      testID="scroll-body"
+      style={styles.body}
+      contentContainerStyle={[styles.content, bottomInset && { paddingBottom: spacing.lg + bottom }]}
+      keyboardShouldPersistTaps="handled"
+    >
+      {children}
+    </ScrollView>
+  );
+}
 
 /**
  * The body of a fixed window: it fills the space under the header and does not scroll. If what is in it turns out

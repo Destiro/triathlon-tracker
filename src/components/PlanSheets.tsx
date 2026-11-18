@@ -5,6 +5,7 @@ import { fromKey } from '../dates';
 import { NewSession } from '../plan/edits';
 import { daysOfWeek, Schedule, TOTAL_WEEKS } from '../plan/schedule';
 import { colors, radius, spacing, type } from '../theme';
+import { useBottomInset } from './layout';
 import { colorOf, tintOf } from './sport';
 import { Button } from './ui';
 
@@ -73,8 +74,9 @@ function DayPicker({ schedule, week, onWeek, selected, current, onSelect }: DayP
 }
 
 export function Sheet({ visible, title, onClose, children }: { visible: boolean; title: string; onClose: () => void; children: React.ReactNode }) {
+  const bottom = useBottomInset();
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close" />
       <View style={styles.sheet}>
         <View style={styles.sheetHeader}>
@@ -83,7 +85,7 @@ export function Sheet({ visible, title, onClose, children }: { visible: boolean;
             <MaterialCommunityIcons name="close" size={26} color={colors.inkSoft} />
           </Pressable>
         </View>
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: spacing.md, paddingBottom: spacing.xl }}>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: spacing.md, paddingBottom: spacing.xl + bottom }}>
           {children}
         </ScrollView>
       </View>
