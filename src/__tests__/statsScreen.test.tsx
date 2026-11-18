@@ -51,39 +51,25 @@ beforeEach(() => {
   mockBare = false;
 });
 
-test('Stats opens on Progress, showing one card at a time with a button for each', async () => {
+test('Stats opens on Progress, with every card on one page and no buttons between them', async () => {
   await render(<StatsScreen />);
   expect(screen.getByText('Stats')).toBeTruthy();
-  // The first card is the month; the others are a button away, not further down the page.
-  expect(screen.getByText('November so far')).toBeTruthy();
-  for (const later of ['Volume per week', 'Time in zones', 'Fitness and form', 'Heart rate drift']) expect(screen.queryByText(later)).toBeNull();
-  for (const button of ['Month', 'Volume', 'Zones', 'Fitness', 'Drift', 'Energy']) expect(screen.getByText(button)).toBeTruthy();
-
-  await fireEvent.press(screen.getByText('Volume'));
-  expect(screen.getByText('Volume per week')).toBeTruthy();
-  expect(screen.queryByText('November so far')).toBeNull();
-  expect(screen.queryByText('Swim per week')).toBeNull();
+  for (const card of ['November so far', 'Volume per week', 'Time in zones', 'Fitness and form', 'Heart rate drift', '1,270 kcal']) {
+    expect(screen.getByText(card)).toBeTruthy();
+  }
+  for (const gone of ['Month', 'Volume', 'Zones', 'Drift', 'Energy']) expect(screen.queryByText(gone, { exact: true })).toBeNull();
+  // The sport chips inside the volume card still switch its chart.
   await fireEvent.press(screen.getAllByText('Bike')[0]);
   expect(screen.getByText('Volume per week')).toBeTruthy();
-
-  await fireEvent.press(screen.getByText('Zones'));
-  expect(screen.getByText('Time in zones')).toBeTruthy();
-  await fireEvent.press(screen.getByText('Fitness'));
-  expect(screen.getByText('Fitness and form')).toBeTruthy();
-  await fireEvent.press(screen.getByText('Drift'));
-  expect(screen.getByText('Heart rate drift')).toBeTruthy();
-  await fireEvent.press(screen.getByText('Energy'));
-  expect(screen.getByText('1,270 kcal')).toBeTruthy();
 });
 
-test('Stats keeps bests and totals on a Records page, one at a time', async () => {
+test('Stats keeps bests, totals and pool and open water together on the Records page', async () => {
   await render(<StatsScreen />);
   await fireEvent.press(screen.getByText('Records'));
-  // The button and the card's own title.
-  expect(screen.getAllByText('Best efforts')).toHaveLength(2);
-  expect(screen.queryByText('Totals since the plan began')).toBeNull();
-  await fireEvent.press(screen.getByText('Totals'));
+  // Only the card's own title: no button of the same name.
+  expect(screen.getAllByText('Best efforts')).toHaveLength(1);
   expect(screen.getByText('Totals since the plan began')).toBeTruthy();
+  expect(screen.queryByText('Totals', { exact: true })).toBeNull();
   expect(screen.queryByText('Time in zones')).toBeNull();
 });
 
@@ -92,23 +78,15 @@ test('Stats has Progress, Records and Health pages, and no separate Health tab',
   for (const page of ['Progress', 'Records', 'Health']) expect(screen.getByText(page)).toBeTruthy();
 });
 
-test('the Health page opens on last night, with readiness, body and overnight a button away', async () => {
+test('the Health page shows last night, readiness, body and overnight on one page', async () => {
   await render(<StatsScreen />);
   await fireEvent.press(screen.getByText('Health'));
   // Sleep moved here from Today, and it comes first.
   expect(screen.getAllByText('Last night').length).toBeGreaterThan(0);
-  expect(screen.queryByText('Readiness today')).toBeNull();
-
-  await fireEvent.press(screen.getByText('Readiness'));
   expect(screen.getByText('Readiness today')).toBeTruthy();
   expect(screen.getByText('Readiness, last two weeks')).toBeTruthy();
-
-  await fireEvent.press(screen.getByText('Body'));
   // Weight fell 1.6 kg between the two readings.
   expect(screen.getByText('74.2 kg  −1.6')).toBeTruthy();
-
-  await fireEvent.press(screen.getByText('Overnight'));
-  expect(screen.queryByText('74.2 kg  −1.6')).toBeNull();
 });
 
 test('Stats leaves out what has no data behind it', async () => {

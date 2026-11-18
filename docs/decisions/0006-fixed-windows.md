@@ -1,6 +1,6 @@
 # 0006. Fixed windows with buttons, not long scrolling pages
 
-Status: Accepted. Options and reasoning in `docs/layout-designs.md`.
+Status: Superseded by 0008. Options and reasoning in `docs/layout-designs.md`.
 
 Each tab is a fixed full-height window with a header, a row of buttons choosing what to look at, and one card in the
 body, rather than a long page of stacked cards. We chose it over swipeable pages (invisible), a tile home screen
