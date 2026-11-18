@@ -27,6 +27,8 @@ export default function TabLayout() {
       <Tabs.Screen name="plan" options={tab('Plan', 'calendar-check-outline')} />
       <Tabs.Screen name="stats" options={tab('Stats', 'chart-line')} />
       <Tabs.Screen name="race" options={tab('Race', 'flag-checkered')} />
+      {/* The chat's message box sits at the bottom, so the tab bar steps aside for the keyboard. */}
+      <Tabs.Screen name="coach" options={{ ...tab('Coach', 'chat-processing-outline'), tabBarHideOnKeyboard: true }} />
     </Tabs>
   );
 }

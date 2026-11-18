@@ -1,4 +1,4 @@
-/** The tab bar has four tabs at most. Settings is reached from Today instead. */
+/** The tab bar: the four main screens and the coach. Settings is reached from Today instead. */
 import { render } from '@testing-library/react-native';
 import React from 'react';
 import TabLayout from '../app/(tabs)/_layout';
@@ -16,10 +16,9 @@ jest.mock('expo-router', () => {
   return { Tabs };
 });
 
-test('the tab bar has Today, Plan, Stats and Race, and no more than four', async () => {
+test('the tab bar has Today, Plan, Stats, Race and Coach, and nothing else', async () => {
   await render(<TabLayout />);
-  expect(mockScreens.map((s) => s.options.title)).toEqual(['Today', 'Plan', 'Stats', 'Race']);
-  expect(mockScreens.length).toBeLessThanOrEqual(4);
+  expect(mockScreens.map((s) => s.options.title)).toEqual(['Today', 'Plan', 'Stats', 'Race', 'Coach']);
   // Settings is its own screen outside the tabs, opened from the cog on Today.
   expect(mockScreens.find((s) => s.name === 'settings')).toBeUndefined();
 });

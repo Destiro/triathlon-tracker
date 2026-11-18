@@ -44,6 +44,7 @@
       "expo-font",
       "expo-asset",
       "react-native-health-connect",
+      "expo-secure-store",
       [
         "expo-build-properties",
         {

@@ -23,3 +23,11 @@ describe('loadSettings', () => {
     expect(schedule.get('2027-03-05')?.workouts.some((w) => w.kind === 'race')).toBe(false);
   });
 });
+
+describe('coach model', () => {
+  it('defaults to Sonnet and falls back to it when a saved model is unknown', () => {
+    expect(loadSettings(undefined).coachModel).toBe('sonnet');
+    expect(loadSettings({ coachModel: 'haiku' }).coachModel).toBe('haiku');
+    expect(loadSettings({ coachModel: 'gpt' as never }).coachModel).toBe('sonnet');
+  });
+});
