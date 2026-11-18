@@ -53,7 +53,14 @@
           }
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Lets you speak messages to the coach instead of typing them.",
+          "speechRecognitionPermission": "Turns what you say to the coach into text."
+        }
+      ]
     ],
     "scheme": "triathlontracker",
     "experiments": {

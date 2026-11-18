@@ -6,6 +6,7 @@ import { ChatItem } from '../coach/conversation';
 import { describeProposal, proposalHeading } from '../coach/tools';
 import { colors, radius, spacing, type } from '../theme';
 import { Button, Card } from './ui';
+import { useVoiceInput } from './useVoiceInput';
 
 /** Asks for an Anthropic API key and says plainly what the coach sends where. */
 export function KeySetup({ onSave }: { onSave: (key: string) => Promise<boolean> }) {
@@ -119,26 +120,47 @@ export function Suggestions({ onPick }: { onPick: (text: string) => void }) {
 
 export function Composer({ busy, onSend }: { busy: boolean; onSend: (text: string) => void }) {
   const [text, setText] = useState('');
-  const canSend = !busy && text.trim().length > 0;
+  const voice = useVoiceInput(text, setText);
+  const canSend = !busy && !voice.listening && text.trim().length > 0;
   const send = () => {
     if (!canSend) return;
     onSend(text.trim());
     setText('');
   };
   return (
-    <View style={styles.composer}>
-      <TextInput
-        value={text}
-        onChangeText={setText}
-        placeholder={busy ? 'Thinking…' : 'Ask your coach'}
-        placeholderTextColor={colors.inkFaint}
-        multiline
-        style={[styles.input, styles.composerInput]}
-        accessibilityLabel="Message"
-      />
-      <Pressable onPress={send} disabled={!canSend} hitSlop={8} accessibilityRole="button" accessibilityLabel="Send" style={[styles.send, !canSend && { opacity: 0.4 }]}>
-        <MaterialCommunityIcons name="send" size={22} color={colors.onAccent} />
-      </Pressable>
+    <View style={styles.composerWrap}>
+      {voice.error && (
+        <View style={styles.voiceError} accessibilityRole="alert">
+          <MaterialCommunityIcons name="microphone-off" size={16} color={colors.danger} />
+          <Text style={[type.small, { flex: 1 }]}>{voice.error}</Text>
+        </View>
+      )}
+      <View style={styles.composer}>
+        <TextInput
+          value={text}
+          onChangeText={setText}
+          placeholder={voice.listening ? 'Listening…' : busy ? 'Thinking…' : 'Ask your coach'}
+          placeholderTextColor={colors.inkFaint}
+          multiline
+          style={[styles.input, styles.composerInput]}
+          accessibilityLabel="Message"
+        />
+        {/* Icon and label change with it, so listening doesn't rest on colour alone. */}
+        <Pressable
+          onPress={voice.toggle}
+          disabled={busy}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={voice.listening ? 'Stop listening' : 'Speak a message'}
+          accessibilityState={{ selected: voice.listening }}
+          style={[styles.mic, voice.listening && styles.micOn, busy && { opacity: 0.4 }]}
+        >
+          <MaterialCommunityIcons name={voice.listening ? 'stop' : 'microphone'} size={22} color={voice.listening ? colors.onAccent : colors.accent} />
+        </Pressable>
+        <Pressable onPress={send} disabled={!canSend} hitSlop={8} accessibilityRole="button" accessibilityLabel="Send" style={[styles.send, !canSend && { opacity: 0.4 }]}>
+          <MaterialCommunityIcons name="send" size={22} color={colors.onAccent} />
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -155,7 +177,11 @@ const styles = StyleSheet.create({
   settled: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   suggestion: { alignSelf: 'flex-start', borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
   suggestionText: { color: colors.accent, fontSize: 14, fontWeight: '600' },
-  composer: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderTopWidth: 1, borderColor: colors.line, backgroundColor: colors.bg },
+  composerWrap: { borderTopWidth: 1, borderColor: colors.line, backgroundColor: colors.bg },
+  composer: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  voiceError: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
+  mic: { borderRadius: radius.pill, padding: spacing.sm, borderWidth: 1, borderColor: colors.accent },
+  micOn: { backgroundColor: colors.accent },
   composerInput: { flex: 1, maxHeight: 120 },
   send: { backgroundColor: colors.accent, borderRadius: radius.pill, padding: spacing.sm },
 });
