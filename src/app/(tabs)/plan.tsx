@@ -7,7 +7,7 @@ import { MonthGrid } from '../../components/MonthGrid';
 import { AddSessionSheet } from '../../components/PlanSheets';
 import { DayWeatherCard, OceanSwimCard } from '../../components/WeatherCards';
 import { SPORT_LABELS, SportBadge, colorOf } from '../../components/sport';
-import { FixedBody } from '../../components/layout';
+import { ScrollBody } from '../../components/layout';
 import { Card } from '../../components/ui';
 import { plannedAmount, STATUS } from '../../components/WorkoutCard';
 import { addMonths, formatDay, formatMonth, fromKey, startOfMonth } from '../../dates';
@@ -63,7 +63,9 @@ export default function PlanScreen() {
             </Pressable>
           )}
         </View>
+      </View>
 
+      <ScrollBody>
         <MonthGrid
           month={month}
           schedule={schedule}
@@ -74,11 +76,14 @@ export default function PlanScreen() {
           weather={weather?.home}
           limits={settings}
         />
-
-
-      </View>
-
-      <FixedBody>
+        <View style={styles.legend}>
+          {LEGEND.map((k) => (
+            <View key={k} style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: colorOf(k) }]} />
+              <Text style={type.small}>{SPORT_LABELS[k]}</Text>
+            </View>
+          ))}
+        </View>
         {day && (
           <>
             <View style={styles.dayHeader}>
@@ -134,15 +139,7 @@ export default function PlanScreen() {
             </Pressable>
           </>
         )}
-        <View style={styles.legend}>
-          {LEGEND.map((k) => (
-            <View key={k} style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: colorOf(k) }]} />
-              <Text style={type.small}>{SPORT_LABELS[k]}</Text>
-            </View>
-          ))}
-        </View>
-      </FixedBody>
+      </ScrollBody>
 
       {adding && (
         <AddSessionSheet

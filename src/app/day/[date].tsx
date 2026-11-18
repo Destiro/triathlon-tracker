@@ -1,9 +1,10 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DayWorkouts } from '../../components/DayWorkouts';
+import { ScrollBody } from '../../components/layout';
 import { AddSessionSheet } from '../../components/PlanSheets';
 import { Empty } from '../../components/ui';
 import { formatDay, fromKey, isDateKey } from '../../dates';
@@ -40,9 +41,9 @@ export default function DayScreen() {
         )}
       </View>
 
-      <ScrollView contentContainerStyle={styles.list}>
+      <ScrollBody bottomInset>
         {valid && day ? <DayWorkouts date={date} /> : <Empty text="This day is outside the plan." />}
-      </ScrollView>
+      </ScrollBody>
 
       {adding && valid && (
         <AddSessionSheet
@@ -63,5 +64,4 @@ export default function DayScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, padding: spacing.lg, paddingBottom: spacing.sm },
-  list: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.md },
 });

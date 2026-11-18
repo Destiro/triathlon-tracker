@@ -2,7 +2,7 @@
  * Taps through the month-grid Plan screen against a fake store. Friday 6 November 2026, week 3: the morning swim is
  * in, the run is still to do, and a gym session repeats on Tuesdays.
  */
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import React from 'react';
 import PlanScreen from '../app/(tabs)/plan';
 import { formatDay, fromKey } from '../dates';
@@ -29,6 +29,15 @@ jest.mock('../store', () => {
 });
 
 const dayLabel = (key: string) => formatDay(fromKey(key));
+
+test('the calendar, its colour key and the chosen day scroll together as one page', async () => {
+  await render(<PlanScreen />);
+  const page = within(screen.getByTestId('scroll-body'));
+  expect(page.getByLabelText(dayLabel('2026-11-18'))).toBeTruthy();
+  for (const key of ['Swim', 'Bike', 'Run', 'Brick', 'Gym']) expect(page.getByText(key)).toBeTruthy();
+  expect(page.getByText('Foundation Run')).toBeTruthy();
+  expect(screen.queryByTestId('fixed-body')).toBeNull();
+});
 
 test('opens on this month with today selected and its workouts underneath', async () => {
   await render(<PlanScreen />);

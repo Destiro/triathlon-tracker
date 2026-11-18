@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useBottomInset } from '../components/layout';
 import { Button, Card } from '../components/ui';
 import { PlaceField } from '../components/WeatherCards';
 import { fromKey, isDateKey } from '../dates';
@@ -44,6 +45,7 @@ function Field({ label, value, onCommit, hint, keyboard }: { label: string; valu
 }
 
 export default function SettingsScreen() {
+  const bottom = useBottomInset();
   const {
     settings,
     updateSettings,
@@ -123,7 +125,7 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={[styles.list, { paddingBottom: spacing.lg + bottom }]} keyboardShouldPersistTaps="handled">
           <View style={styles.titleRow}>
             <Pressable onPress={() => router.back()} hitSlop={12} accessibilityRole="button" accessibilityLabel="Back" style={{ padding: spacing.xs }}>
               <MaterialCommunityIcons name="arrow-left" size={26} color={colors.ink} />
