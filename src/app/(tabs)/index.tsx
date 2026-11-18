@@ -1,14 +1,14 @@
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ring } from '../../components/charts';
 import { DayWorkouts } from '../../components/DayWorkouts';
 import { colorOf, SPORT_LABELS, tintOf } from '../../components/sport';
-import { FixedBody } from '../../components/layout';
+import { ScrollBody } from '../../components/layout';
 import { IssueBanner } from '../../components/NoteSheets';
-import { Button, Card, Empty, Segments } from '../../components/ui';
+import { Button, Card, Empty } from '../../components/ui';
 import { WeekStrip } from '../../components/WeekStrip';
 import { plannedAmount } from '../../components/WorkoutCard';
 import { daysBetween, formatDay, fromKey } from '../../dates';
@@ -18,14 +18,7 @@ import { SPORTS, unitOf, upNext, weekCompliance, weekGym, weekVolume } from '../
 import { useStore, useTodayKey } from '../../store';
 import { colors, radius, spacing, type } from '../../theme';
 
-type Page = 'today' | 'week';
-const PAGES: { value: Page; label: string }[] = [
-  { value: 'today', label: 'Today' },
-  { value: 'week', label: 'This week' },
-];
-
 export default function TodayScreen() {
-  const [page, setPage] = useState<Page>('today');
   const { settings, schedule, activitiesByDate, healthConnected, syncing, sync, lastSync, syncError, connectHealth, healthSyncing } = useStore();
   const todayKey = useTodayKey();
   const today = schedule.get(todayKey);
@@ -76,13 +69,12 @@ export default function TodayScreen() {
           </View>
         )}
 
-        <Segments options={PAGES} value={page} onChange={setPage} />
       </View>
 
-      <FixedBody>
-        {page === 'today' && <IssueBanner />}
+      <ScrollBody>
+        <IssueBanner />
 
-        {page === 'today' && !healthConnected && (
+        {!healthConnected && (
           <Card>
             <Text style={type.heading}>Connect Health Connect</Text>
             <Text style={type.body}>
@@ -94,14 +86,14 @@ export default function TodayScreen() {
           </Card>
         )}
 
-        {page === 'today' && (today ? (
+        {today ? (
           <DayWorkouts date={todayKey} />
         ) : (
           <Empty text={todayKey < settings.planStart ? `The plan starts on ${formatDay(fromKey(settings.planStart))}.` : 'The plan has finished.'} />
-        ))}
+        )}
 
         {/* Only when nothing is left today: a rest day, or everything is done. */}
-        {page === 'today' && next && next.date !== todayKey && (
+        {next && next.date !== todayKey && (
           <Pressable
             onPress={() => router.push({ pathname: '/day/[date]', params: { date: next.date } })}
             style={[styles.next, { borderLeftColor: colorOf(next.result.workout.kind) }]}
@@ -118,7 +110,8 @@ export default function TodayScreen() {
           </Pressable>
         )}
 
-        {page === 'week' && today && (
+        {/* The week so far, last so today's workouts come first. */}
+        {today && (
           <Card>
             <View style={styles.between}>
               <Text style={type.heading}>This week</Text>
@@ -149,7 +142,7 @@ export default function TodayScreen() {
             <WeekStrip days={daysOfWeek(schedule, week)} schedule={schedule} activitiesByDate={activitiesByDate} todayKey={todayKey} />
           </Card>
         )}
-      </FixedBody>
+      </ScrollBody>
     </SafeAreaView>
   );
 }

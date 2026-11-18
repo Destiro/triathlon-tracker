@@ -92,14 +92,15 @@ test('tapping the other workout on Today opens it and closes the first', async (
   expect(screen.queryByText('Main 20 min')).toBeNull();
 });
 
-test('Today is two buttons, Today and This week, and the week page has the rings and strip', async () => {
+test('Today is one page with no buttons to switch, and This week is the last card', async () => {
   await render(<TodayScreen />);
-  expect(screen.queryByText('This week', { exact: true })).toBeTruthy(); // the button
-  expect(screen.queryByText('Swim', { exact: true })).toBeNull();
-  await fireEvent.press(screen.getByText('This week'));
+  expect(screen.queryByRole('tablist')).toBeNull();
+  expect(screen.getByText('Foundation Run')).toBeTruthy();
+  expect(screen.getByText('This week')).toBeTruthy();
   expect(screen.getByText(/of \d+ done|Nothing due yet/)).toBeTruthy();
-  // The workouts are on the other page.
-  expect(screen.queryByText('Foundation Run')).toBeNull();
+  // The week card comes after today's workouts.
+  const page = JSON.stringify(screen.toJSON());
+  expect(page.indexOf('This week')).toBeGreaterThan(page.indexOf('Foundation Run'));
 });
 
 test('Today has no sleep card: that lives on the Health page of Stats', async () => {
