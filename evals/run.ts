@@ -1,7 +1,9 @@
 /**
  * Puts the coach through every scenario against the real Claude API and grades it.
  *
- *   ANTHROPIC_API_KEY=sk-ant-… npm run eval -- [--model sonnet] [--judge opus|none] [--only a,b] [--repeat 3] [--min-pass 0.8]
+ * Switched off by default because every run is billed: set COACH_EVALS_ENABLED=true to run them.
+ *
+ *   COACH_EVALS_ENABLED=true ANTHROPIC_API_KEY=sk-ant-… npm run eval -- [--model sonnet] [--judge opus|none] [--only a,b] [--repeat 3] [--min-pass 0.8]
  *
  * Each scenario runs through the app's own chat loop and tools; checks are pass or fail, and scenarios with a rubric
  * are also graded 1 to 5 by a judge model. Results go to evals/results/ and, on GitHub, to the run summary. Exits 1
@@ -26,6 +28,12 @@ function model(value: string, flag: string): CoachModel {
 }
 
 async function main() {
+  if (process.env.COACH_EVALS_ENABLED !== 'true') {
+    console.log('Live coach evals are switched off, so nothing was sent to Claude (each run is billed).');
+    console.log('To run them: COACH_EVALS_ENABLED=true ANTHROPIC_API_KEY=sk-ant-… npm run eval');
+    console.log('The offline tests of the coach and this harness run free with npm test.');
+    process.exit(0);
+  }
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) {
     console.error('Set ANTHROPIC_API_KEY to run the evals.');
