@@ -57,6 +57,10 @@ jest.mock('../store', () => {
     connectHealth: jest.fn(),
     disconnectHealth: jest.fn(),
     updateSettings: jest.fn(),
+    issues: [],
+    logIssue: jest.fn(),
+    clearIssue: jest.fn(),
+    deleteIssue: jest.fn(),
   };
   return {
     useTodayKey: () => '2026-11-10',
@@ -67,12 +71,9 @@ jest.mock('../store', () => {
 test('the Health page on Stats shows sleep, recovery and VO2 max, with no workouts needed', async () => {
   await render(<StatsScreen />);
   await fireEvent.press(screen.getByText('Health'));
-  // One card at a time, each a button away.
-  await fireEvent.press(screen.getByText('Sleep'));
+  // Every card on the one page.
   expect(screen.getByText(/Hours asleep, last 14 nights/)).toBeTruthy();
-  await fireEvent.press(screen.getByText('Recovery'));
   expect(screen.getByText(/Overnight heart rate falling and HRV rising/)).toBeTruthy();
-  await fireEvent.press(screen.getByText('VO2 max'));
   expect(screen.getByText('48.6')).toBeTruthy();
   expect(screen.getByText(/\+1\.4 in 90 days/)).toBeTruthy();
 });

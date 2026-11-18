@@ -17,16 +17,17 @@ and shown in metres here, rounded to the nearest 25 m (1,450 yd → 1,325 m). Sh
 
 ## What it does
 
-Four tabs: Today, Plan, Stats and Race. Settings opens from the cog at the top right of Today. Each tab is a fixed
-window rather than a long page: buttons at the top choose what to look at, and one card shows at a time. If a card
-is taller than the screen, just that card scrolls. The designs considered are in `docs/layout-designs.md`.
+Four tabs: Today, Plan, Stats and Race. Settings opens from the cog at the top right of Today. Each page is one
+scrolling list of cards; Stats and Race have a row of buttons at the top for their pages, and nothing below that
+hides a card behind another button (`docs/decisions/0008-scrolling-pages.md`).
 
-- **Today**: days to the race, then two buttons. Today lists every workout for the day, one line each; the first one
+- **Today**: days to the race, then one page. It lists every workout for the day, one line each; the first one
   still to do is open, with its warm-up, main set and cool-down, what the watch recorded and a row to move it, and
-  tapping another opens that one instead. On a rest day it points to the next workout. This week has the week strip
-  and this week's swim, bike and run against the plan. Refresh reads Health Connect again.
-- **Plan**: a month calendar. Each day has a dot per workout in its sport's colour, solid once done. Each week
-  shows its planned hours, and finished weeks fade. Tap a day to see its workouts underneath, or open it to move a
+  tapping another opens that one instead. On a rest day it points to the next workout. The This week card, last, has
+  the week strip and this week's swim, bike and run against the plan. Refresh reads Health Connect again.
+- **Plan**: a month calendar with its colour key under it. Each day has a dot per workout in its sport's colour, solid
+  once done. Each week shows its planned hours, and finished weeks fade. Tap a day to see its workouts underneath, on
+  the same scrolling page, or open it to move a
   workout or see what the watch recorded.
 - **Race**: three pages. Race day: the countdown, the predicted finish with how to pace each leg.
   Ready?: the road through the plan phases, distance readiness and form on race day. Checklist. The

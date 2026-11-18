@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colorOf, SPORT_LABELS, tintOf } from '../../components/sport';
 import { ChecklistCard, FormCard } from '../../components/RaceCards';
-import { FixedBody } from '../../components/layout';
+import { ScrollBody } from '../../components/layout';
 import { Card, Segments } from '../../components/ui';
 import { daysBetween, fromKey } from '../../dates';
 import { formatClock, formatHoursMinutes, formatRunPace, formatSpeed, formatSwimPace } from '../../format';
@@ -82,7 +82,7 @@ export default function RaceScreen() {
         <Segments options={PAGES} value={page} onChange={setPage} />
       </View>
 
-      <FixedBody>
+      <ScrollBody>
         {page === 'day' && (
           <>
             <Card style={styles.countdown}>
@@ -167,7 +167,7 @@ export default function RaceScreen() {
         )}
 
         {page === 'checklist' && <ChecklistCard state={checklist} onToggle={toggleChecklist} onAdd={addChecklist} onRemove={removeChecklist} />}
-      </FixedBody>
+      </ScrollBody>
     </SafeAreaView>
   );
 }

@@ -1,67 +1,26 @@
-/** The fixed windows: no scrolling when the content fits, scrolling as a safety valve when it does not. */
-import { fireEvent, render, screen } from '@testing-library/react-native';
+/** Screen bodies: one scrolling page of stacked cards, clear of the phone's navigation bar. */
+import { render, screen } from '@testing-library/react-native';
 import React from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
-import { FixedBody, OneCard, ScrollBody } from '../components/layout';
+import { CardStack, ScrollBody } from '../components/layout';
 
 jest.mock('@expo/vector-icons', () => ({ MaterialCommunityIcons: () => null }));
 
-const measure = async (frame: number, content: number) => {
-  const body = screen.getByTestId('fixed-body');
-  await fireEvent(body, 'layout', { nativeEvent: { layout: { height: frame, width: 360, x: 0, y: 0 } } });
-  await fireEvent(body, 'contentSizeChange', 360, content);
-  return screen.getByTestId('fixed-body');
-};
-
-test('a body that fits does not scroll', async () => {
+test('CardStack shows every card, one under another, with no buttons, and leaves out cards with nothing to show', async () => {
   await render(
-    <FixedBody>
-      <Text>One card</Text>
-    </FixedBody>,
-  );
-  expect((await measure(700, 400)).props.scrollEnabled).toBe(false);
-});
-
-test('a body that is taller than the screen still scrolls, so nothing is cut off', async () => {
-  await render(
-    <FixedBody>
-      <Text>A long list</Text>
-    </FixedBody>,
-  );
-  expect((await measure(500, 900)).props.scrollEnabled).toBe(true);
-});
-
-test('before it has been measured a body is allowed to scroll', async () => {
-  await render(
-    <FixedBody>
-      <Text>Not measured yet</Text>
-    </FixedBody>,
-  );
-  expect(screen.getByTestId('fixed-body').props.scrollEnabled).toBe(true);
-});
-
-test('OneCard shows the first card and a button for each, and leaves out cards with nothing to show', async () => {
-  await render(
-    <OneCard
+    <CardStack
       cards={[
-        { key: 'a', label: 'Alpha', node: <Text>Card A</Text> },
-        { key: 'b', label: 'Beta', show: false, node: <Text>Card B</Text> },
-        { key: 'c', label: 'Gamma', node: <Text>Card C</Text> },
+        { key: 'a', node: <Text>Card A</Text> },
+        { key: 'b', show: false, node: <Text>Card B</Text> },
+        { key: 'c', node: <Text>Card C</Text> },
       ]}
     />,
   );
   expect(screen.getByText('Card A')).toBeTruthy();
-  expect(screen.queryByText('Beta')).toBeNull();
-  await fireEvent.press(screen.getByText('Gamma'));
   expect(screen.getByText('Card C')).toBeTruthy();
-  expect(screen.queryByText('Card A')).toBeNull();
-});
-
-test('OneCard with a single card has no buttons', async () => {
-  await render(<OneCard cards={[{ key: 'a', label: 'Alpha', node: <Text>Card A</Text> }]} />);
-  expect(screen.getByText('Card A')).toBeTruthy();
-  expect(screen.queryByText('Alpha')).toBeNull();
+  expect(screen.queryByText('Card B')).toBeNull();
+  expect(screen.queryByRole('button')).toBeNull();
 });
 
 const bottomPadding = () => {

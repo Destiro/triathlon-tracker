@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { bestValue } from '../../bests';
 import { BarChart, LineChart } from '../../components/charts';
 import { HealthPage } from '../../components/HealthPage';
-import { FixedBody, OneCard } from '../../components/layout';
+import { ScrollBody, CardStack } from '../../components/layout';
 import { colorOf, SPORT_LABELS, SportBadge, tintOf } from '../../components/sport';
 import { DriftCard, EnergyCard, MonthCard, ZonesByWeek } from '../../components/StatsCards';
 import { Card, Chips, Empty, Segments } from '../../components/ui';
@@ -47,7 +47,7 @@ export default function StatsScreen() {
           <Text style={type.title}>Stats</Text>
           <Segments options={PAGES} value={page} onChange={setPage} />
         </View>
-        <FixedBody>{page === 'health' ? <HealthPage /> : <Empty text="Connect Health Connect in Settings and your workouts will fill in the charts here." />}</FixedBody>
+        <ScrollBody>{page === 'health' ? <HealthPage /> : <Empty text="Connect Health Connect in Settings and your workouts will fill in the charts here." />}</ScrollBody>
       </SafeAreaView>
     );
   }
@@ -81,14 +81,14 @@ export default function StatsScreen() {
         <Text style={type.title}>Stats</Text>
         <Segments options={PAGES} value={page} onChange={setPage} />
       </View>
-      <FixedBody>
+      <ScrollBody>
 
         {page === 'progress' && (
-          <OneCard
+          <CardStack
             key="progress"
             cards={[
-              { key: 'month', label: 'Month', show: month.thisMonth.sessions > 0 || month.previousSameDays.sessions > 0, node: <MonthCard summary={month} /> },
-              { key: 'volume', label: 'Volume', node: (
+              { key: 'month', show: month.thisMonth.sessions > 0 || month.previousSameDays.sessions > 0, node: <MonthCard summary={month} /> },
+              { key: 'volume', node: (
             <Card title="Volume per week" note="Faded bar: planned. Solid bar: done. Weeks of the plan along the bottom.">
               <Chips options={SPORT_CHIPS} value={volumeSport} onChange={setVolumeSport} colorOf={colorOf} />
               <BarChart
@@ -103,8 +103,8 @@ export default function StatsScreen() {
                 }))}
               />
             </Card> ) },
-              { key: 'zones', label: 'Zones', show: zoneWeeks.length > 0, node: <ZonesByWeek weeks={zoneWeeks} /> },
-              { key: 'fitness', label: 'Fitness', node: (
+              { key: 'zones', show: zoneWeeks.length > 0, node: <ZonesByWeek weeks={zoneWeeks} /> },
+              { key: 'fitness', node: (
             <Card title="Fitness and form" note="Training load from heart rate. Fitness builds slowly; fatigue rises and falls with each week. Form is fitness minus fatigue, and should climb above zero in the taper.">
               <Chips
                 options={[
@@ -130,7 +130,7 @@ export default function StatsScreen() {
               </Text>
               <Text style={type.small}>{formState(now.form)}</Text>
             </Card> ) },
-              { key: 'efficiency', label: 'Efficiency', show: Boolean(shownEff), node: !shownEff ? null : (
+              { key: 'efficiency', show: Boolean(shownEff), node: !shownEff ? null : (
             <Card title="Efficiency" note="Metres per heartbeat on sessions over 20 minutes. Rising means the same effort takes you further.">
                 {effSports.length > 1 && (
                   <Chips options={effSports.map((s) => ({ value: s, label: SPORT_LABELS[s] }))} value={shownEff} onChange={setEffSport} colorOf={colorOf} />
@@ -141,17 +141,17 @@ export default function StatsScreen() {
                   series={[{ label: SPORT_LABELS[shownEff], color: colorOf(shownEff), values: eff[shownEff].map((p) => p.value) }]}
                 />
               </Card> ) },
-              { key: 'drift', label: 'Drift', show: drift.length > 0, node: <DriftCard sessions={drift} /> },
-              { key: 'energy', label: 'Energy', show: energyNow.total > 0 || energyLast.total > 0, node: <EnergyCard now={energyNow} last={energyLast} /> },
+              { key: 'drift', show: drift.length > 0, node: <DriftCard sessions={drift} /> },
+              { key: 'energy', show: energyNow.total > 0 || energyLast.total > 0, node: <EnergyCard now={energyNow} last={energyLast} /> },
             ]}
           />
         )}
 
         {page === 'records' && (
-          <OneCard
+          <CardStack
             key="records"
             cards={[
-              { key: 'best', label: 'Best efforts', show: best.length > 0, node: (
+              { key: 'best', show: best.length > 0, node: (
             <Card title="Best efforts">
                 {best.map((b) => (
                   <View key={b.label} style={styles.totalRow}>
@@ -165,7 +165,7 @@ export default function StatsScreen() {
                   </View>
                 ))}
               </Card> ) },
-              { key: 'totals', label: 'Totals', node: (
+              { key: 'totals', node: (
             <Card title="Totals since the plan began">
               {[...SPORTS, 'gym' as const].map((s) => {
                 const t = sinceStart[s];
@@ -187,7 +187,7 @@ export default function StatsScreen() {
                 );
               })}
             </Card> ) },
-              { key: 'water', label: 'Pool / open', show: water.pool.count + water.open.count > 0, node: (
+              { key: 'water', show: water.pool.count + water.open.count > 0, node: (
             <Card title="Pool and open water" note="From the swim type the watch recorded. Tap a swim on its day to change it.">
                 {([
                   ['Pool', water.pool],
@@ -209,7 +209,7 @@ export default function StatsScreen() {
         )}
 
         {page === 'health' && <HealthPage key="health" />}
-      </FixedBody>
+      </ScrollBody>
     </SafeAreaView>
   );
 }
