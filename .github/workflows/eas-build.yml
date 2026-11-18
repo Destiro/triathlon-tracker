@@ -1,0 +1,67 @@
+name: Android build
+
+# A preview APK on EAS, started by hand: GitHub app > Actions > Android build > Run workflow. The run's summary links
+# to the build page and the APK, so a build can be started and installed from the phone. Needs the EXPO_TOKEN secret
+# (expo.dev > Account settings > Access tokens).
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: EAS build profile
+        type: choice
+        options: [preview, development]
+        default: preview
+
+# One build at a time: a second tap waits rather than queueing a duplicate on EAS.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: EAS build (${{ inputs.profile }})
+    runs-on: ubuntu-latest
+    # Free EAS builds can sit in a queue before they start.
+    timeout-minutes: 90
+    steps:
+      - name: Check for EXPO_TOKEN
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::Add an EXPO_TOKEN repository secret (Settings > Secrets and variables > Actions) first."
+            exit 1
+          fi
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+      - name: Build on EAS
+        run: eas build --platform android --profile "${{ inputs.profile }}" --non-interactive --wait --json > build.json
+      - name: Links to the build
+        if: always()
+        run: |
+          if [ ! -s build.json ]; then
+            echo "The build did not start. The step above has the reason." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          page=$(jq -r '.[0] | if .project.ownerAccount.name then "https://expo.dev/accounts/\(.project.ownerAccount.name)/projects/\(.project.slug)/builds/\(.id)" else "expo.dev > triathlon-tracker > Builds, build \(.id)" end' build.json)
+          apk=$(jq -r '.[0].artifacts.buildUrl // empty' build.json)
+          {
+            echo "## Android ${{ inputs.profile }} build"
+            echo ""
+            echo "- Status: $(jq -r '.[0].status' build.json)"
+            echo "- Build page (install from here on the phone): $page"
+            if [ -n "$apk" ]; then echo "- APK: $apk"; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "Build page: $page"
+          if [ -n "$apk" ]; then echo "APK: $apk"; fi
