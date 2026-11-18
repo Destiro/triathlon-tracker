@@ -81,7 +81,7 @@ function errorFor(status: number, body: unknown): CoachError {
 export function claudeSender(apiKey: string, model: CoachModel, fetchImpl: typeof fetch = fetch): Send {
   const modelId = COACH_MODELS[model].id;
   return async ({ system, messages, tools }) => {
-    const body: Record<string, unknown> = { model: modelId, max_tokens: MAX_TOKENS, system, messages, tools };
+    const body: Record<string, unknown> = { model: modelId, max_tokens: MAX_TOKENS, system, messages, ...(tools.length ? { tools } : {}) };
     // Sonnet 5.5 thinks up front by default; for a chat on a phone, thinking only between tool calls answers sooner.
     if (model === 'sonnet') body.thinking = { type: 'between_tools' };
     let response: Response;
