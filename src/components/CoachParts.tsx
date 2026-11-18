@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { looksLikeKey } from '../coach/key';
 import { ChatItem } from '../coach/conversation';
-import { describeProposal } from '../coach/tools';
+import { describeProposal, proposalHeading } from '../coach/tools';
 import { colors, radius, spacing, type } from '../theme';
 import { Button, Card } from './ui';
 
@@ -80,7 +80,7 @@ export function ProposalCard({ item, onApply, onCancel }: { item: Extract<ChatIt
   const text = describeProposal(item.proposal);
   return (
     <View style={styles.proposal}>
-      <Text style={type.label}>Change to your plan</Text>
+      <Text style={type.label}>{proposalHeading(item.proposal)}</Text>
       <Text style={type.body}>{text}</Text>
       {item.state === 'pending' ? (
         <View style={styles.actions}>
